@@ -1,0 +1,441 @@
+@import "tailwindcss";
+
+/* ============================================================
+   MINDFUL — PREMIUM DESIGN SYSTEM
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   CUSTOM FONTS
+   ---------------------------------------------------------- */
+@theme {
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+/* ----------------------------------------------------------
+   GLOBAL RESET & BASE
+   ---------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: #0d0f1a;
+  color: #e8eaf6;
+  overflow-x: hidden;
+}
+
+/* ----------------------------------------------------------
+   DESIGN TOKENS — Custom Properties
+   ---------------------------------------------------------- */
+:root {
+  /* Primary Palette — Deep Indigo */
+  --color-primary: #6c72e8;
+  --color-primary-light: #9599f0;
+  --color-primary-dark: #4a50c8;
+  --color-primary-glow: rgba(108, 114, 232, 0.3);
+
+  /* Secondary — Rose Blush */
+  --color-secondary: #e8799a;
+  --color-secondary-light: #f0a0b8;
+
+  /* Surface Tones */
+  --color-bg: #0d0f1a;
+  --color-surface-1: rgba(255, 255, 255, 0.03);
+  --color-surface-2: rgba(255, 255, 255, 0.06);
+  --color-surface-3: rgba(255, 255, 255, 0.10);
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-hover: rgba(255, 255, 255, 0.20);
+
+  /* Text */
+  --color-text-primary: #e8eaf6;
+  --color-text-secondary: rgba(232, 234, 246, 0.65);
+  --color-text-muted: rgba(232, 234, 246, 0.40);
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Border Radius */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 36px;
+  --radius-2xl: 48px;
+
+  /* Shadows */
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 40px var(--color-primary-glow);
+
+  /* Animation Timing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 600ms;
+  --duration-very-slow: 1000ms;
+}
+
+/* ----------------------------------------------------------
+   TAILWIND CSS THEME VARIABLES (v4 compatible)
+   ---------------------------------------------------------- */
+@theme {
+  /* Typography classes used by the project */
+  --text-on-primary: #ffffff;
+  --text-on-secondary-container: #1a1a2e;
+  --text-on-surface-variant: rgba(232, 234, 246, 0.65);
+  --text-on-tertiary-container: rgba(192, 196, 234, 0.9);
+
+  /* Color tokens used throughout */
+  --color-background: #0d0f1a;
+  --color-primary: #6c72e8;
+  --color-primary-container: #5055c8;
+  --color-secondary: #e8799a;
+  --color-secondary-container: rgba(232, 121, 154, 0.15);
+  --color-secondary-fixed: #feced7;
+  --color-secondary-fixed-dim: #f4a8c0;
+  --color-primary-fixed-dim: #c0c4ea;
+  --color-outline-variant: rgba(255, 255, 255, 0.12);
+  --color-surface-container: rgba(255, 255, 255, 0.05);
+  --color-surface-container-low: rgba(255, 255, 255, 0.03);
+  --color-surface-container-high: rgba(255, 255, 255, 0.08);
+  --color-surface-container-lowest: rgba(255, 255, 255, 0.02);
+  --color-on-surface: #e8eaf6;
+  --color-error: #f28b82;
+}
+
+/* ----------------------------------------------------------
+   CUSTOM UTILITY CLASSES
+   ---------------------------------------------------------- */
+
+/* Glass card base */
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+}
+
+.glass-card-hover {
+  transition: transform var(--duration-normal) var(--ease-out-expo),
+              background var(--duration-normal) ease,
+              border-color var(--duration-normal) ease,
+              box-shadow var(--duration-normal) ease;
+}
+
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(108, 114, 232, 0.25);
+  box-shadow: 0 0 0 1px rgba(108, 114, 232, 0.15), 0 20px 60px rgba(0, 0, 0, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Premium button glow */
+.btn-glow {
+  box-shadow: 0 0 20px rgba(108, 114, 232, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 30px rgba(108, 114, 232, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #c0c4ea 0%, #e8799a 50%, #c0c4ea 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-cool {
+  background: linear-gradient(135deg, #a8b4ff 0%, #c0c4ea 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Mesh gradient backgrounds */
+.bg-mesh-1 {
+  background:
+    radial-gradient(ellipse at 15% 30%, rgba(108, 114, 232, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 20%, rgba(232, 121, 154, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 80%, rgba(96, 165, 250, 0.08) 0%, transparent 60%),
+    #0d0f1a;
+}
+
+.bg-mesh-2 {
+  background:
+    radial-gradient(ellipse at 80% 20%, rgba(108, 114, 232, 0.20) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 70%, rgba(232, 121, 154, 0.15) 0%, transparent 55%),
+    #0d0f1a;
+}
+
+/* Glow orb decoration */
+.glow-orb {
+  background: radial-gradient(circle, rgba(108, 114, 232, 0.5) 0%, transparent 70%);
+  filter: blur(60px);
+  animation: orb-drift 8s ease-in-out infinite;
+}
+
+.glow-orb-rose {
+  background: radial-gradient(circle, rgba(232, 121, 154, 0.4) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: orb-drift 12s ease-in-out infinite reverse;
+}
+
+/* ----------------------------------------------------------
+   ANIMATIONS
+   ---------------------------------------------------------- */
+
+@keyframes orb-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(20px, -15px) scale(1.05); }
+  66% { transform: translate(-15px, 10px) scale(0.95); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(108, 114, 232, 0.4); }
+  70% { box-shadow: 0 0 0 20px rgba(108, 114, 232, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(108, 114, 232, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+/* Animation utility classes */
+.animate-float {
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s var(--ease-out-expo) both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s var(--ease-out-expo) both;
+}
+
+/* Stagger delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+
+/* ----------------------------------------------------------
+   SCROLLBAR STYLING
+   ---------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ----------------------------------------------------------
+   FORM INPUTS — GLOBAL OVERRIDES
+   ---------------------------------------------------------- */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #6c72e8;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(108, 114, 232, 0.5), 0 2px 8px rgba(0,0,0,0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 20px rgba(108, 114, 232, 0.7), 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ----------------------------------------------------------
+   TYPOGRAPHY OVERRIDES
+   ---------------------------------------------------------- */
+.font-display {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+}
+
+.font-display-lg {
+  font-family: "Instrument Serif", Georgia, serif;
+}
+
+.font-body-md {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ----------------------------------------------------------
+   SELECTION
+   ---------------------------------------------------------- */
+::selection {
+  background: rgba(108, 114, 232, 0.3);
+  color: #c0c4ea;
+}
+
+/* ----------------------------------------------------------
+   PARTICLE DOTS BACKGROUND PATTERN
+   ---------------------------------------------------------- */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ----------------------------------------------------------
+   FROSTED PANEL
+   ---------------------------------------------------------- */
+.frosted {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ----------------------------------------------------------
+   MOOD CHIP HOVER STATES
+   ---------------------------------------------------------- */
+.mood-chip {
+  transition: all var(--duration-normal) var(--ease-out-expo);
+  cursor: pointer;
+  user-select: none;
+}
+
+.mood-chip:hover {
+  transform: translateY(-2px);
+}
+
+.mood-chip:active {
+  transform: scale(0.96);
+}
+
+/* ----------------------------------------------------------
+   WAVEFORM BAR ANIMATION
+   ---------------------------------------------------------- */
+.waveform-bar {
+  animation: waveform 1.2s ease-in-out infinite;
+}
+
+/* ----------------------------------------------------------
+   PROGRESS BAR GLOW
+   ---------------------------------------------------------- */
+.progress-glow {
+  box-shadow: 0 0 12px rgba(108, 114, 232, 0.6);
+}
