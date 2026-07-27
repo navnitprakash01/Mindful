@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { ChatMessage, CompanionMode } from '../types';
-
+import { useAuth } from "./AuthContext";
 interface ChatContextType {
   chatMessages: ChatMessage[];
   addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<void>;
@@ -9,11 +9,15 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-const initialChat: ChatMessage[] = [
+
+export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+
+  const initialChat: ChatMessage[] = [
   {
     id: "c-1",
     sender: "companion",
-    text: "Welcome back to your sanctuary, ${userProfile.name}. I am present with you. How is your inner weather today?",
+    text: `Welcome back to your sanctuary, ${user?.name || "friend"}. I am present with you. How is your inner weather today?`,
     timestamp: "2:14 PM",
     mode: "Empathetic Listener",
     suggestedPathways: [
@@ -24,7 +28,6 @@ const initialChat: ChatMessage[] = [
   },
 ];
 
-export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialChat);
 
   const addChatMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => {
@@ -37,7 +40,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Send to backend API
     try {
-      const response = await fetch('/api/gemini/companion', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/gemini/companion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
