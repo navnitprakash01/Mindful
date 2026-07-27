@@ -11,9 +11,22 @@ import journalRoutes from "./src/server/routes/journalRoutes";
 
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+import cors from "cors";
+
+const corsOptions = {
+  origin: "https://mindful-eight-xi.vercel.app",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
+const PORT = Number(process.env.PORT) || 3000;
+
+
 
 // Initialize Gemini Client
 let ai: GoogleGenAI | null = null;
