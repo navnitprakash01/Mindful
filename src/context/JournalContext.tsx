@@ -16,7 +16,8 @@ interface JournalContextType {
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
 
-const API_BASE = '/api/journals';
+const API_BASE =
+  `${import.meta.env.VITE_API_URL}/api/journals`;
 
 export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, getAccessToken } = useAuth();
