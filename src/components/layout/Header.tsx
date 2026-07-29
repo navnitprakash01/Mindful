@@ -2,8 +2,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { ViewTab } from '../../types';
-import { Bell, Search, Volume2, VolumeX, Sparkles, ChevronDown } from 'lucide-react';
+import { Bell, Search, Volume2, VolumeX, ChevronDown } from 'lucide-react';
 import { Badge } from '../ui/Badge';
+import logo from '../../assets/logo.png';
 
 export const Header: React.FC = () => {
   const {
@@ -42,9 +43,11 @@ export const Header: React.FC = () => {
             onClick={() => setCurrentView('dashboard')}
             className="flex items-center gap-2.5 group select-none"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#6c72e8] to-[#e8799a] flex items-center justify-center shadow-[0_0_16px_rgba(108,114,232,0.40)] group-hover:shadow-[0_0_24px_rgba(108,114,232,0.60)] transition-shadow">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+            <img
+              src={logo}
+              alt="Mindful logo"
+              className="w-10 h-10 object-contain shrink-0"
+            />
             <span className="font-display-lg text-xl text-[rgba(232,234,246,0.90)] group-hover:text-white transition-colors">
               Mindful
             </span>

@@ -1,0 +1,17 @@
+{
+  "name": "Mindful",
+  "short_name": "Mindful",
+  "description": "AI-Powered Emotional Sanctuary",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0c16",
+  "theme_color": "#181d3a",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
