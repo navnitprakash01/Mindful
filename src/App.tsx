@@ -2,6 +2,7 @@ import React, { useState, Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { AmbientAudioProvider } from './context/AmbientAudioContext';
 import { AmbientShaderCanvas } from './components/ui/AmbientShaderCanvas';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
@@ -115,7 +116,9 @@ export default function App() {
     <ToastProvider>
       <AuthProvider>
         <AppProvider>
-          <AppContent />
+          <AmbientAudioProvider>
+            <AppContent />
+          </AmbientAudioProvider>
         </AppProvider>
       </AuthProvider>
     </ToastProvider>

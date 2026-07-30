@@ -2,8 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { ViewTab } from '../../types';
-import { Bell, Search, Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import { Bell, Search, Volume2, VolumeX } from 'lucide-react';
 import { Badge } from '../ui/Badge';
+import { useAmbientAudio } from '../../context/AmbientAudioContext';
+import { useToast } from '../../context/ToastContext';
 import logo from '../../assets/logo.png';
 
 export const Header: React.FC = () => {
@@ -13,10 +15,11 @@ export const Header: React.FC = () => {
     notifications,
     setIsNotificationDrawerOpen,
     setIsCommandKOpen,
-    activeSoundscape,
-    toggleSoundscape,
     userProfile,
   } = useApp();
+
+  const { isPlaying, togglePlayback, setPlaying } = useAmbientAudio();
+  const { showToast } = useToast();
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -83,20 +86,26 @@ export const Header: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Soundscape Toggle */}
+          {/* Ambient Audio Toggle */}
           <button
-            onClick={() => toggleSoundscape('binaural')}
-            title={activeSoundscape ? `Playing ${activeSoundscape}` : 'Play Ambient Soundscape'}
-            aria-label={activeSoundscape ? `Turn off ${activeSoundscape} ambient soundscape` : 'Turn on ambient soundscapes'}
-            aria-pressed={!!activeSoundscape}
+            onClick={() => {
+              try {
+                togglePlayback();
+              } catch {
+                showToast('Ambient audio unavailable.');
+              }
+            }}
+            title={isPlaying ? 'Pause ambient audio' : 'Play ambient audio'}
+            aria-label={isPlaying ? 'Pause ambient audio' : 'Play ambient audio'}
+            aria-pressed={isPlaying}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 ${
-              activeSoundscape
+              isPlaying
                 ? 'bg-[rgba(108,114,232,0.20)] text-[#c0c4ea] border border-[rgba(108,114,232,0.30)]'
                 : 'text-[rgba(232,234,246,0.45)] hover:text-[rgba(232,234,246,0.75)] hover:bg-[rgba(255,255,255,0.05)]'
             }`}
           >
             <AnimatePresence mode="wait">
-              {activeSoundscape ? (
+              {isPlaying ? (
                 <motion.div key="on" initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}>
                   <Volume2 className="w-3.5 h-3.5 text-[#6c72e8]" />
                 </motion.div>
@@ -107,7 +116,7 @@ export const Header: React.FC = () => {
               )}
             </AnimatePresence>
             <span className="hidden sm:inline">
-              {activeSoundscape ? 'Ambient On' : 'Ambient'}
+              {isPlaying ? 'Ambient On' : 'Ambient'}
             </span>
           </button>
 
