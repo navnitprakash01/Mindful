@@ -130,23 +130,46 @@ app.post("/api/gemini/analyze", async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || !ai) {
       return res.json({
-        summary: "A reflective entry highlighting inner awareness and emotional processing.",
         dominantEmotion: "Contemplative",
-        score: 78,
-        reframingInsight: "Notice how expressing your thoughts onto paper creates mental space.",
-        actionableRecommendation: "Take a 5-minute quiet walk outside to integrate your thoughts."
+        dominantScore: 78,
+        emotions: [
+          { name: "Stress", score: 65 },
+          { name: "Anxiety", score: 45 },
+          { name: "Hope", score: 30 },
+          { name: "Confidence", score: 40 },
+        ],
+        summary: "A reflective entry highlighting inner awareness and emotional processing.",
+        themes: ["Self-awareness", "Emotional processing"],
+        suggestedAction: "Take a 5-minute quiet walk outside to integrate your thoughts.",
+        reflectionPrompt: "What small step could bring you more peace right now?",
       });
     }
 
-    const prompt = `Analyze the following journal entry written by a user seeking emotional wellness:
+    const prompt = `Analyze the following journal entry and return ONLY valid JSON with this exact structure:
+{
+  "dominantEmotion": "string (one word, e.g. Overwhelmed, Grateful, Anxious, Peaceful)",
+  "dominantScore": "integer 0-100",
+  "emotions": [
+    {"name": "string", "score": "integer 0-100"},
+    {"name": "string", "score": "integer 0-100"},
+    {"name": "string", "score": "integer 0-100"},
+    {"name": "string", "score": "integer 0-100"}
+  ],
+  "summary": "string (2-3 short sentences)",
+  "themes": ["string", "string", "string"],
+  "suggestedAction": "string (one actionable item)",
+  "reflectionPrompt": "string (one thoughtful question)"
+}
+
+Journal entry:
 "${journalText}"
 
-Provide a structured JSON output with:
-1. "summary": A 1-2 sentence warm, empathetic summary of the reflection.
-2. "dominantEmotion": One word describing the primary emotional tone (e.g. Grateful, Overwhelmed, Serene, Anxious, Inspired, Nostalgic).
-3. "score": An emotional wellness balance score integer between 0 and 100.
-4. "reframingInsight": A compassionate alternative perspective or gentle wisdom (1-2 sentences).
-5. "actionableRecommendation": One small, concrete mindful ritual or action for today.`;
+Guidelines:
+- dominantEmotion: single word, capitalized
+- emotions: exactly 4 entries, scores should vary
+- themes: max 3 items, short phrases
+- suggestedAction: one concrete, gentle action
+- reflectionPrompt: one open-ended question`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
@@ -156,16 +179,43 @@ Provide a structured JSON output with:
       },
     });
 
+    console.log("Raw Gemini response:", response.text);
+
     try {
       const parsed = JSON.parse(response.text || "{}");
-      return res.json(parsed);
+      // Validate and ensure all fields exist
+      const result = {
+        dominantEmotion: parsed.dominantEmotion || "Reflective",
+        dominantScore: typeof parsed.dominantScore === 'number' ? parsed.dominantScore : 75,
+        emotions: Array.isArray(parsed.emotions) ? parsed.emotions.slice(0, 4).map((e: any) => ({
+          name: e.name || "Unknown",
+          score: typeof e.score === 'number' ? e.score : 50
+        })) : [
+          { name: "Stress", score: 65 },
+          { name: "Anxiety", score: 45 },
+          { name: "Hope", score: 30 },
+          { name: "Confidence", score: 40 }
+        ],
+        summary: parsed.summary || "A reflective entry capturing current life experiences.",
+        themes: Array.isArray(parsed.themes) ? parsed.themes.slice(0, 3) : ["Self-awareness", "Emotional processing"],
+        suggestedAction: parsed.suggestedAction || "Sip a glass of warm water slowly and notice the physical warmth.",
+        reflectionPrompt: parsed.reflectionPrompt || "What small step could bring you more peace right now?",
+      };
+      return res.json(result);
     } catch {
       return res.json({
-        summary: "A heartfelt reflection capturing current life experiences.",
         dominantEmotion: "Reflective",
-        score: 75,
-        reframingInsight: "Every feeling is temporary weather; you are the sky.",
-        actionableRecommendation: "Sip a glass of warm water slowly and notice the physical warmth."
+        dominantScore: 75,
+        emotions: [
+          { name: "Stress", score: 65 },
+          { name: "Anxiety", score: 45 },
+          { name: "Hope", score: 30 },
+          { name: "Confidence", score: 40 }
+        ],
+        summary: "A heartfelt reflection capturing current life experiences.",
+        themes: ["Self-awareness", "Emotional processing"],
+        suggestedAction: "Sip a glass of warm water slowly and notice the physical warmth.",
+        reflectionPrompt: "What small step could bring you more peace right now?",
       });
     }
   } catch (err) {

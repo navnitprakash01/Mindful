@@ -14,6 +14,11 @@ import {
   RotateCcw,
   CheckCircle2,
   Clock,
+  Brain,
+  Zap,
+  MessageCircle,
+  Target,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -24,10 +29,6 @@ import { EmptyState } from '../ui/EmptyState';
 import { ErrorState } from '../ui/ErrorState';
 import { staggerContainer, staggerChildFast, fadeUp } from '../../lib/motion';
 import { JournalEntry } from '../../types';
-
-// ─────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────
 
 const AUTOSAVE_DELAY_MS = 3000;
 
@@ -43,11 +44,17 @@ const tags = ['Reflection', 'Gratitude', 'Anxiety', 'Growth', 'Mindfulness'];
 const moods = ['Serene', 'Joyful', 'Calm', 'Anxious', 'Reflective', 'Grateful'];
 const PAGE_SIZE = 5;
 
-// ─────────────────────────────────────────────────────────────
-// AUTOSAVE STATUS INDICATOR
-// ─────────────────────────────────────────────────────────────
-
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+interface AIAnalysis {
+  dominantEmotion: string;
+  dominantScore: number;
+  emotions: { name: string; score: number }[];
+  summary: string;
+  themes: string[];
+  suggestedAction: string;
+  reflectionPrompt: string;
+}
 
 const AutosaveIndicator: React.FC<{ status: SaveStatus }> = ({ status }) => (
   <AnimatePresence mode="wait">
@@ -79,10 +86,6 @@ const AutosaveIndicator: React.FC<{ status: SaveStatus }> = ({ status }) => (
     )}
   </AnimatePresence>
 );
-
-// ─────────────────────────────────────────────────────────────
-// JOURNAL ENTRY CARD
-// ─────────────────────────────────────────────────────────────
 
 interface JournalEntryCardProps {
   entry: JournalEntry;
@@ -141,9 +144,35 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({
   </motion.div>
 );
 
-// ─────────────────────────────────────────────────────────────
-// MAIN JOURNAL VIEW
-// ─────────────────────────────────────────────────────────────
+const Waveform: React.FC<{ isRecording: boolean }> = ({ isRecording }) => {
+  const barsRef = useRef<number[]>([0.2, 0.4, 0.6, 0.3, 0.5, 0.7, 0.4, 0.6]);
+  const [bars, setBars] = useState(barsRef.current);
+
+  useEffect(() => {
+    if (!isRecording) {
+      setBars([0.1, 0.2, 0.15, 0.1, 0.15, 0.2, 0.15, 0.1]);
+      return;
+    }
+    const interval = setInterval(() => {
+      setBars(barsRef.current.map(() => 0.15 + Math.random() * 0.75));
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  return (
+    <div className="flex items-end gap-1 h-6 ml-2" aria-hidden="true">
+      {bars.map((height, i) => (
+        <motion.div
+          key={i}
+          style={{ height: `${height * 100}%` }}
+          className="w-1 rounded-full bg-gradient-to-t from-[#6c72e8] to-[#e8799a]"
+          animate={{ height: `${height * 100}%` }}
+          transition={{ duration: 0.1, ease: 'easeInOut' }}
+        />
+      ))}
+    </div>
+  );
+};
 
 export const JournalView: React.FC = () => {
   const {
@@ -160,7 +189,6 @@ export const JournalView: React.FC = () => {
     showToast,
   } = useApp();
 
-  // Editor state
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTag, setSelectedTag] = useState('Reflection');
@@ -170,26 +198,24 @@ export const JournalView: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [aiAnalysis, setAiAnalysis] = useState<{
-    summary?: string;
-    dominantEmotion?: string;
-    score?: number;
-    reframingInsight?: string;
-  } | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
 
-  // Archive state
   const [historySearch, setHistorySearch] = useState('');
   const [page, setPage] = useState(1);
 
-  // Autosave ref
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [transcript, setTranscript] = useState('');
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recognitionError, setRecognitionError] = useState<string | null>(null);
+
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedContentRef = useRef('');
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setPage(1);
   }, [historySearch]);
 
-  // ── Dynamic background based on writing content
   const getDynamicBg = () => {
     const text = (title + ' ' + content).toLowerCase();
     if (text.includes('joy') || text.includes('happy') || text.includes('grateful')) {
@@ -213,11 +239,14 @@ export const JournalView: React.FC = () => {
     setActiveEntryId(null);
     setAiAnalysis(null);
     setSaveStatus('idle');
+    setTranscript('');
+    setRecordingTime(0);
+    setRecognitionError(null);
     savedContentRef.current = '';
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
   }, []);
 
-  // ── Autosave logic
   const performAutosave = useCallback(async (currentContent: string, currentTitle: string) => {
     if (!currentContent.trim() || currentContent === savedContentRef.current) return;
 
@@ -228,9 +257,9 @@ export const JournalView: React.FC = () => {
         content: currentContent,
         tags: [selectedTag],
         mood: selectedMood,
-        moodScore: aiAnalysis?.score || 75,
+        moodScore: aiAnalysis?.dominantScore || 75,
         aiSummary: aiAnalysis?.summary,
-        aiAnalysis: aiAnalysis?.reframingInsight || aiAnalysis?.summary,
+        aiAnalysis: aiAnalysis?.reflectionPrompt || aiAnalysis?.summary,
         favorite: false,
         emotion: selectedTag,
       };
@@ -255,7 +284,6 @@ export const JournalView: React.FC = () => {
     }
   }, [selectedTag, selectedMood, aiAnalysis, editingEntryId, activeEntryId, addJournalEntry, updateJournalEntry]);
 
-  // Trigger autosave on content change
   useEffect(() => {
     if (!content.trim()) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
@@ -279,9 +307,9 @@ export const JournalView: React.FC = () => {
         content,
         tags: [selectedTag],
         mood: selectedMood,
-        moodScore: aiAnalysis?.score || 82,
+        moodScore: aiAnalysis?.dominantScore || 82,
         aiSummary: aiAnalysis?.summary,
-        aiAnalysis: aiAnalysis?.reframingInsight || aiAnalysis?.summary,
+        aiAnalysis: aiAnalysis?.reflectionPrompt || aiAnalysis?.summary,
         favorite: false,
         emotion: selectedTag,
       };
@@ -309,14 +337,15 @@ export const JournalView: React.FC = () => {
         body: JSON.stringify({ journalText: content }),
       });
       const data = await res.json();
+      console.log("Gemini response data:", data);
       setAiAnalysis(data);
       showToast('AI Reflection complete ✨');
       if (activeEntryId || editingEntryId) {
         await updateJournalEntry(activeEntryId ?? editingEntryId!, {
           aiSummary: data.summary,
-          aiAnalysis: data.reframingInsight || data.summary,
+          aiAnalysis: data.reflectionPrompt || data.summary,
           mood: data.dominantEmotion || selectedMood,
-          moodScore: data.score || 82,
+          moodScore: data.dominantScore || 82,
           emotion: data.dominantEmotion || selectedTag,
         });
       }
@@ -327,21 +356,92 @@ export const JournalView: React.FC = () => {
     }
   };
 
-  const toggleRecording = () => {
-    if (!isRecording) {
+  const startRecording = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showToast('Speech recognition not supported in this browser');
+      setRecognitionError('Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const newRecognition = new SpeechRecognition();
+    newRecognition.continuous = true;
+    newRecognition.interimResults = true;
+    newRecognition.lang = 'en-US';
+
+    newRecognition.onstart = () => {
       setIsRecording(true);
-      showToast('Listening... Speak your reflection aloud 🎙️');
-      setTimeout(() => {
-        setContent((prev) =>
-          prev
-            ? prev + ' Taking a moment to breathe and notice how light filters through the window.'
-            : 'Taking a moment to breathe and notice how light filters through the window.'
-        );
-        setIsRecording(false);
-        showToast('Voice reflection captured');
-      }, 3500);
+      setRecordingTime(0);
+      setRecognitionError(null);
+      showToast('Listening… Speak your reflection aloud 🎙️');
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((t) => t + 1);
+      }, 1000);
+    };
+
+    newRecognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      setTranscript(interimTranscript || finalTranscript);
+      if (finalTranscript) {
+        setContent((prev) => prev ? prev + ' ' + finalTranscript : finalTranscript);
+      }
+    };
+
+    newRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        setRecognitionError('Microphone permission denied. Please allow microphone access.');
+        showToast('Microphone permission denied');
+      } else if (event.error === 'no-speech') {
+        setRecognitionError('No speech detected. Try speaking closer to the microphone.');
+      } else {
+        setRecognitionError(`Recognition error: ${event.error}`);
+      }
+      stopRecording();
+    };
+
+    newRecognition.onend = () => {
+      if (isRecording) {
+        newRecognition.start();
+      }
+    };
+
+    setRecognition(newRecognition);
+    newRecognition.start();
+  }, [isRecording, showToast]);
+
+  const stopRecording = useCallback(() => {
+    if (recognition) {
+      recognition.stop();
+      setRecognition(null);
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    showToast('Voice reflection captured');
+    setTimeout(() => {
+      handleAnalyzeWithAI();
+    }, 500);
+  }, [recognition, showToast]);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
     } else {
-      setIsRecording(false);
+      startRecording();
     }
   };
 
@@ -353,16 +453,22 @@ export const JournalView: React.FC = () => {
     setSelectedTag(entry.tags[0] || 'Reflection');
     setSelectedMood(entry.mood);
     savedContentRef.current = entry.content;
-    setAiAnalysis(
+setAiAnalysis(
       entry.aiSummary || entry.aiAnalysis
         ? {
-            summary: entry.aiSummary,
-            dominantEmotion: entry.emotion || entry.mood,
-            score: entry.moodScore,
-            reframingInsight: entry.aiAnalysis,
+            dominantEmotion: entry.emotion || entry.mood || 'Reflective',
+            dominantScore: entry.moodScore || 75,
+            emotions: entry.aiEmotions || [],
+            summary: entry.aiSummary || '',
+            themes: entry.aiThemes || [],
+            suggestedAction: entry.aiSuggestedAction || '',
+            reflectionPrompt: entry.aiReflectionPrompt || entry.aiAnalysis || '',
           }
         : null
     );
+    setTranscript('');
+    setRecordingTime(0);
+    setRecognitionError(null);
   };
 
   const filteredEntries = journalEntries.filter(
@@ -377,13 +483,37 @@ export const JournalView: React.FC = () => {
   const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
   const tagColor = moodColors[selectedTag] || '#c0c4ea';
 
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const getEmotionEmoji = (emotion: string) => {
+    const emojiMap: Record<string, string> = {
+      Overwhelmed: '😰',
+      Anxious: '😟',
+      Stressed: '😣',
+      Calm: '😌',
+      Peaceful: '😊',
+      Joyful: '😄',
+      Grateful: '🙏',
+      Hopeful: '🌱',
+      Confident: '💪',
+      Reflective: '🤔',
+      Sad: '😢',
+      Angry: '😠',
+      Neutral: '😐',
+    };
+    return emojiMap[emotion] || '💭';
+  };
+
   return (
     <PageTransition transitionKey="journal">
       <div
         className="min-h-screen pt-24 pb-36 px-4 sm:px-6 md:px-12 max-w-6xl mx-auto flex flex-col transition-all duration-1000"
         style={{ background: getDynamicBg() }}
       >
-        {/* ── Top Bar ── */}
         <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
           <button
             onClick={() => setCurrentView('dashboard')}
@@ -403,15 +533,24 @@ export const JournalView: React.FC = () => {
               variant={isRecording ? 'danger' : 'glass'}
               size="sm"
               leftIcon={isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
+              className={isRecording ? 'animate-pulse ring-2 ring-[#e8799a]/50' : ''}
             >
-              {isRecording ? 'Listening...' : 'Voice'}
+              {isRecording ? (
+                <>
+                  <span className="mr-1">{formatTime(recordingTime)}</span>
+                  <Waveform isRecording={isRecording} />
+                  Recording…
+                </>
+              ) : (
+                'Voice'
+              )}
             </Button>
             <Button
               onClick={() => void handleAnalyzeWithAI()}
               isLoading={isAnalyzing}
               variant="glass"
               size="sm"
-              leftIcon={<Sparkles className="w-4 h-4 text-[#c0c4ea]" />}
+              leftIcon={isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-[#c0c4ea]" />}
             >
               AI Insight
             </Button>
@@ -427,13 +566,9 @@ export const JournalView: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Content Grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
-
-          {/* ── Editor Panel ── */}
           <div className="lg:col-span-8 flex flex-col">
             <div className="flex-1 bg-[rgba(255,255,255,0.03)] backdrop-blur-[40px] border border-[rgba(255,255,255,0.07)] rounded-[36px] p-7 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.40)] flex flex-col transition-all duration-500">
-              {/* Tags */}
               <div className="flex flex-wrap gap-2 mb-5">
                 {tags.map((tag) => (
                   <Badge
@@ -452,7 +587,6 @@ export const JournalView: React.FC = () => {
                 ))}
               </div>
 
-              {/* Mood selector */}
               <div className="flex gap-1.5 flex-wrap mb-5">
                 {moods.map((m) => (
                   <button
@@ -469,7 +603,6 @@ export const JournalView: React.FC = () => {
                 ))}
               </div>
 
-              {/* Title input */}
               <input
                 type="text"
                 value={title}
@@ -478,15 +611,38 @@ export const JournalView: React.FC = () => {
                 className="w-full bg-transparent border-none focus:outline-none font-display-lg text-3xl sm:text-4xl text-[rgba(232,234,246,0.85)] placeholder:text-[rgba(232,234,246,0.15)] mb-5"
               />
 
-              {/* Content textarea */}
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Begin your reflection... What is moving through your mind?"
+                placeholder={isRecording && transcript ? `Live: ${transcript}` : 'Begin your reflection... What is moving through your mind?'}
                 className="w-full flex-1 min-h-[300px] bg-transparent border-none focus:outline-none font-body-md text-base sm:text-lg text-[rgba(232,234,246,0.70)] placeholder:text-[rgba(232,234,246,0.18)] resize-none leading-[1.8]"
               />
 
-              {/* Footer */}
+              {isRecording && transcript && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 p-3 rounded-xl bg-[rgba(108,114,232,0.10)] border border-[rgba(108,114,232,0.20)]"
+                >
+                  <div className="flex items-center gap-2 text-xs text-[rgba(192,196,234,0.70)] mb-1">
+                    <Mic className="w-3 h-3 text-[#6c72e8] animate-pulse" />
+                    <span>Live transcription:</span>
+                    <span className="font-mono">{formatTime(recordingTime)}</span>
+                  </div>
+                  <p className="text-[rgba(232,234,246,0.60)] text-sm italic">{transcript}</p>
+                </motion.div>
+              )}
+
+              {recognitionError && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 p-3 rounded-xl bg-[rgba(242,139,130,0.10)] border border-[rgba(242,139,130,0.20)]"
+                >
+                  <p className="text-xs text-[#f28b82]">{recognitionError}</p>
+                </motion.div>
+              )}
+
               <div className="pt-4 border-t border-[rgba(255,255,255,0.06)] flex justify-between items-center text-xs text-[rgba(232,234,246,0.25)]">
                 <span>{wordCount} words · ~{Math.max(1, Math.ceil(wordCount / 200))} min read</span>
                 <div className="flex items-center gap-2">
@@ -500,10 +656,7 @@ export const JournalView: React.FC = () => {
             </div>
           </div>
 
-          {/* ── Sidebar ── */}
           <div className="lg:col-span-4 flex flex-col gap-5">
-
-            {/* AI Analysis Panel */}
             <AnimatePresence>
               {aiAnalysis && (
                 <motion.div
@@ -513,45 +666,107 @@ export const JournalView: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.97, y: -8 }}
                 >
                   <Card
-                    className="p-6"
+                    className="p-4"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(108,114,232,0.15) 0%, rgba(13,15,26,0.90) 100%)',
-                      border: '1px solid rgba(108,114,232,0.25)',
+                      background: 'linear-gradient(135deg, rgba(108,114,232,0.12) 0%, rgba(13,15,26,0.92) 100%)',
+                      border: '1px solid rgba(108,114,232,0.22)',
                     }}
                   >
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles className="w-4 h-4 text-[#c0c4ea]" />
-                      <h4 className="font-display-lg text-lg text-[rgba(232,234,246,0.90)]">AI Synthesis</h4>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Brain className="w-4 h-4 text-[#c0c4ea]" />
+                      <h4 className="font-display-lg text-base text-[rgba(232,234,246,0.90)]">AI Insight</h4>
                     </div>
-                    <div className="space-y-3 text-xs text-[rgba(192,196,234,0.70)]">
-                      {aiAnalysis.dominantEmotion && (
-                        <div>
-                          <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Dominant Tone</span>
-                          <span className="text-base font-display-lg text-[rgba(232,234,246,0.90)]">
-                            {aiAnalysis.dominantEmotion} ({aiAnalysis.score}/100)
-                          </span>
+
+                    <div className="space-y-3 text-[12px]">
+                      {/* Dominant Emotion + Score */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{getEmotionEmoji(aiAnalysis.dominantEmotion)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-[rgba(232,234,246,0.90)] truncate pr-2">
+                              {aiAnalysis.dominantEmotion}
+                            </span>
+                            <span className="text-[rgba(192,196,234,0.50)] font-mono text-[10px] shrink-0 ml-2">
+                              {aiAnalysis.dominantScore}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden mt-1">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${aiAnalysis.dominantScore}%` }}
+                              className="h-full bg-gradient-to-r from-[#6c72e8] to-[#e8799a] rounded-full"
+                              transition={{ duration: 0.8, ease: 'easeOut' }}
+                            />
+                          </div>
                         </div>
-                      )}
-                      {aiAnalysis.summary && (
-                        <div>
-                          <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Summary</span>
-                          <p>{aiAnalysis.summary}</p>
+                      </div>
+
+                      {/* Emotion Profile - 2 column grid on desktop */}
+                      <div>
+                        <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1.5 text-[10px]">Emotion Profile</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {(aiAnalysis.emotions || []).slice(0, 4).map((e, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="text-[rgba(232,234,246,0.55)] w-20 truncate font-medium text-[11px]">{e.name}</span>
+                              <div className="flex-1 h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${e.score}%` }}
+                                  className="h-full bg-gradient-to-r from-[#6c72e8] to-[#e8799a] rounded-full"
+                                  transition={{ duration: 0.6, delay: i * 0.1, ease: 'easeOut' }}
+                                />
+                              </div>
+                              <span className="text-[rgba(192,196,234,0.50)] font-mono text-[10px] w-8 text-right">{e.score}%</span>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                      {aiAnalysis.reframingInsight && (
-                        <div>
-                          <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Insight</span>
-                          <p className="italic font-display-lg text-[rgba(192,234,246,0.80)]">"{aiAnalysis.reframingInsight}"</p>
+                      </div>
+
+                      {/* Summary */}
+                      <div className="pt-2 border-t border-[rgba(255,255,255,0.04)]">
+                        <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Summary</span>
+                        <div className="h-[4.5rem] overflow-hidden">
+                          <p className="text-[rgba(192,196,234,0.75)] leading-6 text-xs line-clamp-3 h-full">{aiAnalysis.summary}</p>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Key Themes - Compact Chips */}
+                      <div className="pt-2 border-t border-[rgba(255,255,255,0.04)]">
+                        <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1.5 text-[10px]">Key Themes</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(aiAnalysis.themes || []).slice(0, 3).map((t, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(108,114,232,0.15)] text-[#c0c4ea] border border-[rgba(108,114,232,0.25)] whitespace-nowrap"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Suggested Action - Compact Highlighted */}
+                      <div className="pt-2 border-t border-[rgba(255,255,255,0.04)]">
+                        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[rgba(108,114,232,0.10)] border border-[rgba(108,114,232,0.20)]">
+                          <Zap className="w-3 h-3 text-[#6c72e8] shrink-0 mt-0.5" />
+                          <p className="text-[rgba(232,234,246,0.85)] text-[12px] leading-snug">{aiAnalysis.suggestedAction || ''}</p>
+                        </div>
+                      </div>
+
+                      {/* Reflection Prompt - Quote Styling */}
+                      <div className="pt-2">
+                        <div className="relative pl-3 border-l-2 border-[rgba(108,114,232,0.40)] bg-[rgba(108,114,232,0.05)] rounded-r-xl p-2.5">
+                          <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Reflection</span>
+                          <p className="text-[rgba(232,234,246,0.70)] italic leading-snug">"{aiAnalysis.reflectionPrompt || ''}"</p>
+                        </div>
+                      </div>
                     </div>
                   </Card>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Archive Panel */}
-            <Card className="flex flex-col p-6 max-h-[620px]">
+            <Card className="flex flex-col p-5 max-h-[620px]">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-display-lg text-xl text-[rgba(232,234,246,0.90)]">Archive</h4>
                 <span className="text-xs text-[rgba(232,234,246,0.30)] font-mono">{journalEntries.length} entries</span>
@@ -566,7 +781,6 @@ export const JournalView: React.FC = () => {
                 />
               )}
 
-              {/* Search */}
               <div className="relative mb-3">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(232,234,246,0.25)]" />
                 <input
@@ -578,7 +792,6 @@ export const JournalView: React.FC = () => {
                 />
               </div>
 
-              {/* Entries */}
               {isJournalLoading ? (
                 <div className="flex-1 space-y-2.5 overflow-y-auto">
                   {[...Array(3)].map((_, i) => (
@@ -622,7 +835,6 @@ export const JournalView: React.FC = () => {
                 </div>
               )}
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-3 flex items-center justify-between text-[10px] text-[rgba(232,234,246,0.35)]">
                   <button
@@ -643,7 +855,6 @@ export const JournalView: React.FC = () => {
                 </div>
               )}
             </Card>
-
           </div>
         </div>
       </div>

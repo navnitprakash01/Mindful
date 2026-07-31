@@ -28,6 +28,10 @@ export interface JournalEntry {
   aiAnalysis?: string;
   favorite: boolean;
   wordCount: number;
+  aiEmotions?: { name: string; score: number }[];
+  aiThemes?: string[];
+  aiSuggestedAction?: string;
+  aiReflectionPrompt?: string;
 }
 
 export interface MoodLog {
