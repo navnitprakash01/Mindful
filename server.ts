@@ -7,14 +7,39 @@ import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import journalRoutes from "./src/server/routes/journalRoutes";
+import companionRoutes from "./src/server/routes/companionRoutes";
+import conversationRoutes from "./src/server/routes/conversationRoutes";
+import { supabase } from "./src/server/lib/supabase";
 
 
 
 const app = express();
 import cors from "cors";
 
-const corsOptions = {
-  origin: "https://mindful-eight-xi.vercel.app",
+const allowedOrigins = [
+  ...(process.env.CLIENT_URL || process.env.ALLOWED_ORIGIN || "https://mindful-eight-xi.vercel.app")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean),
+  "https://mindful-eight-xi.vercel.app",
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, or same-origin)
+    if (!origin) return callback(null, true);
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin);
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -49,46 +74,108 @@ app.get("/api/health", (_req, res) => {
 // Journal API Routes
 app.use("/api/journals", journalRoutes);
 
+// Companion API Routes
+app.use("/api/companion", companionRoutes);
+
+// Conversation API Routes
+app.use("/api/companion/conversations", conversationRoutes);
+
 // Gemini Companion API Route
 app.post("/api/gemini/companion", async (req, res) => {
   try {
     const { message, conversationHistory, mode = "Empathetic Listener" } = req.body;
 
-    if (!message) {
+    if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({ error: "Message is required" });
+    }
+
+    const cleanMessage = message.trim();
+
+    // 1. Retrieve optional authenticated journal context securely
+    let journalContextText = "";
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7).trim();
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (user && !authError) {
+          const { data: entries, error: dbError } = await supabase
+            .from("journal_entries")
+            .select("created_at, mood, emotion, ai_summary, content")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(3);
+
+          if (!dbError && entries && entries.length > 0) {
+            const formatted = entries.map((e, idx) => {
+              const dateStr = new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              const moodOrEmotion = e.emotion || e.mood || "Reflective";
+              const summary = e.ai_summary || (e.content ? e.content.slice(0, 90) + "..." : "Reflection");
+              return `${idx + 1}. [${dateStr}] Mood: ${moodOrEmotion} — ${summary}`;
+            }).join("\n");
+            journalContextText = `User's Recent Journal Entries (for background empathy only; do NOT recite or dump this context unless the user brings it up or it naturally connects):\n${formatted}\n`;
+          }
+        }
+      } catch {
+        // Silently continue without journal context if auth check or Supabase query fails
+      }
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || !ai) {
-      // Return a gentle, realistic intelligent response fallback if key is missing
       return res.json({
-        reply: `I hear you deeply. Feeling "${message.slice(0, 30)}..." is completely valid. Take a slow, grounding breath. What is one small weight you can release right now?`,
+        reply: "Hello! I am present with you. How can I support your inner peace and clarity today?",
         suggestedPathways: [
           "Guide me through a calming breath",
           "Help me reframe this feeling",
-          "What patterns do you notice?"
+          "I want to reflect on my day"
         ]
       });
     }
 
-    const systemInstructions: Record<string, string> = {
-      "Empathetic Listener": "You are Mindful Companion, a compassionate, warm, and gentle emotional wellness assistant. Your responses should be soothing, empathetic, grounded, concise (2-4 sentences max), and ask reflective questions that help the user explore their emotions safely without judging or giving clinical diagnoses.",
-      "Mindful Coach": "You are a Mindful Coach. Focus on actionable grounding techniques, breathwork suggestions, micro-habits, and gentle forward momentum. Keep responses concise, encouraging, and structured.",
-      "Stoic Philosopher": "You are a Stoic Wellness Guide inspired by Marcus Aurelius and Epictetus. Offer calm wisdom on distinguishing what is within one's control versus outside, finding peace in acceptance, and transforming obstacles into wisdom.",
-      "CBT Reframer": "You are a Cognitive Reframing Guide. Help the user gently identify cognitive distortions (such as all-or-nothing thinking or catastrophizing) and offer a compassionate, realistic alternative perspective."
+    // 2. Structured, conversational system instructions
+    const baseSystemPrompt = `You are Mindful Companion, a calm, warm, supportive, and emotionally intelligent AI companion in the Mindful wellness app.
+
+Core Principles:
+1. Conversational & Responsive: Always respond directly to what the user actually said. If the user says a casual greeting (like "hello", "hi", "good morning", "how are you?"), greet them warmly and naturally first. Do NOT turn casual greetings or simple small talk into intense emotional processing or therapeutic exercises.
+2. Calm & Grounded Presence: Maintain a soothing, warm, mindful, and unhurried tone. Keep responses concise (typically 2 to 4 sentences) unless the user specifically asks for an exercise or detailed reflection.
+3. Thoughtful Inquiry: Ask an open, gentle question or offer an insightful thought when appropriate, but vary your questions naturally. Avoid repetitive catchphrases.
+4. Positive Recognition: If the user shares good news or says they had a good day, celebrate and validate their joy warmly.
+5. Boundaries: You are a mindfulness guide and emotional wellness support companion, not a licensed therapist or clinical provider. Never provide medical diagnoses, clinical labels, or pretend to be human.
+6. Context Awareness: If journal notes or previous chat history are provided, use them to sense the user's emotional state, but never lecture them or dump journal summaries unprompted.`;
+
+    const personaInstructions: Record<string, string> = {
+      "Empathetic Listener": "Active Persona: Empathetic Listener. Focus on deep presence, warmth, non-judgmental validation, and gentle emotional reflection.",
+      "Mindful Coach": "Active Persona: Mindful Coach. Focus on gentle encouragement, actionable micro-habits, breathwork, and clear, realistic grounding steps.",
+      "Stoic Philosopher": "Active Persona: Stoic Philosopher (inspired by Marcus Aurelius and Epictetus). Focus on calm wisdom, distinguishing what is within our control from what is not, and finding peace in acceptance.",
+      "CBT Reframer": "Active Persona: CBT Reframer. Focus on compassionate cognitive reframing, gently helping identify cognitive distortions and exploring balanced, realistic alternative viewpoints."
     };
 
-    const sysInstruction = systemInstructions[mode] || systemInstructions["Empathetic Listener"];
+    const personaInstruction = personaInstructions[mode] || personaInstructions["Empathetic Listener"];
+    const sysInstruction = `${baseSystemPrompt}\n\n${personaInstruction}`;
 
-    // Format chat contents
+    // 3. Format chat contents with conversation history
     let contents = "";
-    if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-      const recent = conversationHistory.slice(-6);
-      contents = recent.map((item: { sender: string; text: string }) => `${item.sender}: ${item.text}`).join("\n");
-      contents += `\nUser: ${message}\nCompanion:`;
-    } else {
-      contents = `User: ${message}\nCompanion:`;
+    if (journalContextText) {
+      contents += `${journalContextText}\n`;
     }
+
+    if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      const recent = conversationHistory.slice(-10);
+      const historyStr = recent
+        .filter((item: any) => item && (item.text || item.content))
+        .map((item: any) => {
+          const sender = item.sender === "user" || item.role === "user" ? "User" : "Companion";
+          const text = item.text || item.content;
+          return `${sender}: ${text}`;
+        })
+        .join("\n");
+      if (historyStr) {
+        contents += `Conversation History:\n${historyStr}\n\n`;
+      }
+    }
+
+    contents += `User: ${cleanMessage}\nCompanion:`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
@@ -99,21 +186,41 @@ app.post("/api/gemini/companion", async (req, res) => {
       },
     });
 
-    const reply = response.text || "I am present with you. How does your body feel as you share this?";
+    const reply = response.text?.trim() || "I am present with you. How can I support you right now?";
+
+    const pathwaysByMode: Record<string, string[]> = {
+      "Empathetic Listener": [
+        "Help me explore this feeling",
+        "Guide me through a calming breath",
+        "What patterns do you notice?"
+      ],
+      "Mindful Coach": [
+        "Suggest a small next step",
+        "Guide me through a quick grounding reset",
+        "How can I build momentum?"
+      ],
+      "Stoic Philosopher": [
+        "What is within my control here?",
+        "Help me view this with acceptance",
+        "Offer a stoic reflection"
+      ],
+      "CBT Reframer": [
+        "Help me reframe this thought",
+        "What is a more balanced perspective?",
+        "Explore what triggered this feeling"
+      ]
+    };
 
     return res.json({
       reply,
-      suggestedPathways: [
-        "Help me reframe this thought",
-        "Guide me through 3 slow breaths",
-        "Explore what triggered this feeling"
-      ]
+      suggestedPathways: pathwaysByMode[mode] || pathwaysByMode["Empathetic Listener"]
     });
   } catch (err: unknown) {
-    console.error("Gemini companion error:", err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("Gemini companion generation error:", errorMsg);
     return res.status(500).json({
       error: "Unable to process reflection at this moment",
-      reply: "Take a gentle pause. I am right here with you whenever you're ready to continue."
+      message: "The AI Companion is momentarily unavailable. Please try again shortly."
     });
   }
 });

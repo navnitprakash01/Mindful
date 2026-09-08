@@ -6,6 +6,11 @@ interface AuthenticatedRequest extends Request {
 }
 
 export async function authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
