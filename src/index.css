@@ -74,6 +74,9 @@ body {
   --space-16: 64px;
   --space-20: 80px;
 
+  /* Mobile Safe Area Token */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
   /* Border Radius */
   --radius-sm: 12px;
   --radius-md: 20px;
@@ -482,3 +485,71 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .progress-glow {
   box-shadow: 0 0 12px rgba(108, 114, 232, 0.6);
 }
+
+/* ----------------------------------------------------------
+   RESPONSIVE MOBILE AI CHAT BOUNDED SHELL (V4 ARCHITECTURE)
+   ---------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .mobile-companion-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .mobile-companion-shell .app-header {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    flex-shrink: 0;
+    z-index: 30;
+  }
+
+  .mobile-companion-shell .app-main {
+    flex: 1 1 0%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+  }
+
+  .mobile-companion-shell .app-bottom-nav {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    flex-shrink: 0;
+    z-index: 30;
+    pointer-events: auto;
+  }
+}
+
+.chat-messages-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+@media (max-width: 767px) {
+  .phone-chat-input-container {
+    padding-left: 3.5rem; /* 56px: leaves clean room for 44px floating nav button */
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-companion-shell {
+    height: auto;
+    max-height: none;
+    min-height: 100vh;
+    display: block;
+    overflow: visible;
+  }
+}
+
+

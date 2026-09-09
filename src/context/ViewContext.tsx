@@ -9,7 +9,13 @@ interface ViewContextType {
 const ViewContext = createContext<ViewContextType | undefined>(undefined);
 
 export const ViewProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentView, setCurrentView] = useState<ViewTab>('dashboard');
+  const [currentView, setCurrentView] = useState<ViewTab>(() => {
+    if (typeof window !== 'undefined') {
+      const param = new URLSearchParams(window.location.search).get('view') as ViewTab;
+      if (param) return param;
+    }
+    return 'dashboard';
+  });
 
   return (
     <ViewContext.Provider value={{ currentView, setCurrentView }}>

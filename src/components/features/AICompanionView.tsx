@@ -76,7 +76,7 @@ export const AICompanionView: React.FC = () => {
   const currentConfig = modeConfig[mode];
 
   return (
-    <div className="relative min-h-screen pt-20 pb-8 px-4 sm:px-6 md:px-8 max-w-3xl mx-auto flex flex-col">
+    <div className="relative max-w-3xl mx-auto w-full h-full min-h-0 flex flex-col overflow-hidden px-4 sm:px-6 md:px-8 pt-2 sm:pt-4 lg:pt-20 lg:pb-8 lg:h-auto lg:min-h-screen lg:overflow-visible">
       {/* Deep space background */}
       <div className="fixed inset-0 -z-20 pointer-events-none"
         style={{ background: 'linear-gradient(160deg, #0a0c1a 0%, #0f1128 40%, #0d0d20 100%)' }}
@@ -86,7 +86,7 @@ export const AICompanionView: React.FC = () => {
       </div>
 
       {/* === HEADER === */}
-      <div className="flex justify-between items-center py-4 mb-6 border-b border-[rgba(255,255,255,0.07)]">
+      <div className="flex justify-between items-center py-2 sm:py-4 mb-2 sm:mb-4 border-b border-[rgba(255,255,255,0.07)] shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCurrentView('dashboard')}
@@ -136,7 +136,7 @@ export const AICompanionView: React.FC = () => {
       </div>
 
       {/* === MODE SELECTOR === */}
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-5 no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-2 sm:pb-3 sm:mb-4 no-scrollbar shrink-0">
         {(Object.keys(modeConfig) as CompanionMode[]).map((m) => {
           const cfg = modeConfig[m];
           const isActive = mode === m;
@@ -162,13 +162,13 @@ export const AICompanionView: React.FC = () => {
       </div>
 
       {/* Active mode badge */}
-      <div className="mb-4 text-xs text-[rgba(232,234,246,0.30)] flex items-center gap-2">
+      <div className="mb-2 sm:mb-3 text-xs text-[rgba(232,234,246,0.30)] flex items-center gap-2 shrink-0">
         <div className="w-1.5 h-1.5 rounded-full" style={{ background: currentConfig.color, boxShadow: `0 0 6px ${currentConfig.color}80` }} />
         {mode} — {currentConfig.desc}
       </div>
 
       {/* === MESSAGES === */}
-      <div className="flex-1 overflow-y-auto space-y-5 pr-1 mb-5">
+      <div className="chat-messages-scroll space-y-3 sm:space-y-5 pr-1 mb-2">
         <AnimatePresence initial={false}>
           {chatMessages.map((msg) => (
             <motion.div
@@ -250,7 +250,7 @@ export const AICompanionView: React.FC = () => {
       </div>
 
       {/* === INPUT BAR === */}
-      <div className="sticky bottom-6">
+      <div className="phone-chat-input-container shrink-0 mb-1 sm:mb-2 lg:mb-0 lg:sticky lg:bottom-6 z-40">
         <form
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
           className="flex items-center gap-2 bg-[rgba(13,15,26,0.85)] backdrop-blur-[32px] border border-[rgba(255,255,255,0.10)] p-2 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.50)] focus-within:border-[rgba(108,114,232,0.30)] transition-all duration-200"
@@ -259,8 +259,9 @@ export const AICompanionView: React.FC = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onFocus={() => { setTimeout(scrollToBottom, 250); }}
             placeholder="Share what's on your mind..."
-            className="flex-1 bg-transparent border-none focus:outline-none text-sm text-[rgba(232,234,246,0.80)] placeholder:text-[rgba(232,234,246,0.25)] px-4 py-2.5"
+            className="flex-1 bg-transparent border-none focus:outline-none text-base sm:text-sm text-[rgba(232,234,246,0.80)] placeholder:text-[rgba(232,234,246,0.25)] px-4 py-2.5"
           />
           <motion.button
             type="submit"

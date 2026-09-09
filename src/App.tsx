@@ -83,22 +83,36 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const isCompanion = currentView === 'companion';
+
   return (
-    <div className="min-h-screen relative font-body-md text-on-surface selection:bg-primary/10 select-none">
+    <div
+      className={`min-h-screen relative font-body-md text-on-surface selection:bg-primary/10 select-none ${
+        isCompanion
+          ? 'mobile-companion-shell lg:min-h-screen lg:h-auto lg:overflow-visible lg:block'
+          : ''
+      }`}
+    >
       {/* Background WebGL Ambient Shader */}
-      <AmbientShaderCanvas opacity={currentView === 'companion' ? 0.2 : 0.45} />
+      <AmbientShaderCanvas opacity={isCompanion ? 0.2 : 0.45} />
 
       {/* Top Header */}
       {currentView !== 'landing' && <Header />}
 
       {/* View Switcher */}
-      <main className="relative z-10">
+      <main
+        className={`relative z-10 ${
+          isCompanion
+            ? 'app-main flex-1 min-h-0 flex flex-col overflow-hidden lg:flex-none lg:overflow-visible lg:h-auto'
+            : ''
+        }`}
+      >
         <Suspense fallback={<ViewSkeleton />}>
           {renderView()}
         </Suspense>
       </main>
 
-      {/* Floating Bottom Nav */}
+      {/* Floating / Normal Flow Bottom Nav */}
       <BottomNav />
 
       {/* Global Overlays & Modals */}

@@ -317,7 +317,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const nextUser = buildProfileFromUser(session.user, profile);
           setState(prev => ({ ...prev, user: nextUser, session, isAuthenticated: true, isLoading: false, error: null }));
           persistUser(nextUser);
-} else {
+        } else {
+          const cachedUserStr = localStorage.getItem(STORAGE_KEY);
+          if (cachedUserStr) {
+            try {
+              const cachedUser = JSON.parse(cachedUserStr);
+              if (cachedUser && typeof cachedUser === 'object') {
+                setState(prev => ({ ...prev, user: cachedUser, session: null, isAuthenticated: true, isLoading: false, error: null }));
+                return;
+              }
+            } catch {}
+          }
           setState(prev => ({ ...prev, user: null, session: null, isLoading: false, error: null }));
           persistUser(null);
         }
@@ -344,6 +354,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setError(message);
         }
       } else {
+        const cachedUserStr = localStorage.getItem(STORAGE_KEY);
+        if (cachedUserStr) {
+          try {
+            const cachedUser = JSON.parse(cachedUserStr);
+            if (cachedUser && typeof cachedUser === 'object') {
+              setState(prev => ({ ...prev, user: cachedUser, session: null, isAuthenticated: true, isLoading: false, error: null }));
+              return;
+            }
+          } catch {}
+        }
         setState(prev => ({ ...prev, user: null, session: null, isAuthenticated: false, isLoading: false, error: null }));
         persistUser(null);
       }

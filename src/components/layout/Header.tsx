@@ -32,8 +32,16 @@ export const Header: React.FC = () => {
     { label: 'Insights', view: 'analytics' },
   ];
 
+  const isCompanion = currentView === 'companion';
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-3">
+    <header
+      className={`app-header px-4 pt-3 ${
+        isCompanion
+          ? 'relative shrink-0 z-30 lg:fixed lg:top-0 lg:left-0 lg:right-0 lg:z-50'
+          : 'fixed top-0 left-0 right-0 z-50'
+      }`}
+    >
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
