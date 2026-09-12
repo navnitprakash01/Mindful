@@ -36,6 +36,7 @@ export interface PromptContext {
   systemPrompt: string;
   conversation: ConversationMessage[];
   journalContext: JournalContext;
+  memories?: Array<{ category: string; summary: string }>;
   currentMessage: string;
   mode: string;
 }

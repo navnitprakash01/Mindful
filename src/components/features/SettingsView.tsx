@@ -7,6 +7,7 @@ import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { Volume2, VolumeX, Download, ShieldCheck, Sparkles, User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { MemoryVaultSettings } from './settings/MemoryVaultSettings';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -197,6 +198,9 @@ export const SettingsView: React.FC = () => {
           )}
         </Card>
       </motion.div>
+
+      {/* Memory & Proactivity (Phase 8) */}
+      <MemoryVaultSettings />
 
       {/* Data Export */}
       <motion.div

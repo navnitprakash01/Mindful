@@ -43,6 +43,8 @@ export interface GraphBuilderContext {
   recentSessions?: InterventionSession[];
   effectiveness?: Record<string, InterventionEffectiveness>;
   baseline?: PersonalBaseline | NeutralBaseline;
+  activeMemories?: any[];
+  proactiveDecision?: any;
   referenceTime?: Date;
 }
 
@@ -324,6 +326,67 @@ export class GraphBuilder {
               label: 'Pattern relevance',
             });
           }
+        }
+      }
+    }
+
+    // 6b. Personal Memory Nodes & Proactive Decision (Phase 8)
+    const safeMemories = (context.activeMemories || []).filter((m) => m && m.userId === userId);
+    for (const mem of safeMemories) {
+      const memNodeId = `node-mem-${mem.id}`;
+      nodes[memNodeId] = {
+        id: memNodeId,
+        type: 'memory_item',
+        label: `Memory: ${mem.category}`,
+        summary: mem.summary,
+        timestamp: mem.lastObservedAt,
+        confidence: mem.confidence,
+        userId,
+        metadata: {
+          category: mem.category,
+          sourceType: mem.sourceType,
+          userConfirmed: mem.userConfirmed,
+        },
+      };
+
+      if (recommendation) {
+        const recNodeId = `node-rec-${recommendation.intervention.id}`;
+        if (nodes[recNodeId]) {
+          edges.push({
+            sourceNodeId: memNodeId,
+            targetNodeId: recNodeId,
+            type: 'informs',
+            label: 'Personal memory context',
+          });
+        }
+      }
+    }
+
+    if (context.proactiveDecision && context.proactiveDecision.shouldSurface) {
+      const proDecision = context.proactiveDecision;
+      const proNodeId = `node-proactive-${proDecision.actionType || 'checkin'}`;
+      nodes[proNodeId] = {
+        id: proNodeId,
+        type: 'proactive_decision',
+        label: `Proactive Decision: ${proDecision.actionType || 'reflection'}`,
+        summary: proDecision.rationale || 'Proactive contact justified by state and patterns.',
+        timestamp: proDecision.evaluatedAt,
+        userId,
+        metadata: {
+          actionType: proDecision.actionType,
+          policyVersion: proDecision.policyVersion,
+        },
+      };
+
+      if (recommendation) {
+        const recNodeId = `node-rec-${recommendation.intervention.id}`;
+        if (nodes[recNodeId]) {
+          edges.push({
+            sourceNodeId: proNodeId,
+            targetNodeId: recNodeId,
+            type: 'justifies',
+            label: 'Proactive reach-out policy justified',
+          });
         }
       }
     }

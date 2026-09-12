@@ -15,6 +15,8 @@ import patternRoutes from "./src/server/routes/patternRoutes";
 import interventionRoutes from "./src/server/routes/interventionRoutes";
 import voiceRoutes from "./src/server/routes/voiceRoutes";
 import cameraRoutes from "./src/server/routes/cameraRoutes";
+import memoryRoutes from "./src/server/routes/memoryRoutes";
+import proactiveRoutes from "./src/server/routes/proactiveRoutes";
 import { supabase } from "./src/server/lib/supabase";
 import { stateService } from "./src/server/services/stateService";
 import { SignalExtractor } from "./src/server/engine/signalExtractor";
@@ -101,6 +103,12 @@ app.use("/api/voice", voiceRoutes);
 
 // Privacy-Preserving Camera Behavioral Intelligence API Routes
 app.use("/api/camera", cameraRoutes);
+
+// Personal AI Memory API Routes
+app.use("/api/memory", memoryRoutes);
+
+// Proactive Intelligence API Routes
+app.use("/api/proactive", proactiveRoutes);
 
 // Companion API Routes
 app.use("/api/companion", companionRoutes);

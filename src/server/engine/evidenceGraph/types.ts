@@ -17,6 +17,8 @@ export type NodeType =
   | 'session_action'
   | 'outcome_delta'
   | 'learning_summary'
+  | 'memory_item'
+  | 'proactive_decision'
   | 'crisis';
 
 export type EdgeType =

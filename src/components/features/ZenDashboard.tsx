@@ -21,6 +21,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { MoodCheckInModal } from './MoodCheckInModal';
 import { PatternInsightsCard } from './PatternInsightsCard';
 import { InterventionRecommendationCard } from './intervention/InterventionRecommendationCard';
+import { ProactiveCheckInCard } from './proactive/ProactiveCheckInCard';
 import {
   staggerContainer,
   staggerChild,
@@ -301,6 +302,9 @@ export const ZenDashboard: React.FC = () => {
             ))}
           </motion.div>
         </section>
+
+        {/* ── PROACTIVE CHECK-IN CARD (PHASE 8) ── */}
+        <ProactiveCheckInCard onOpenCheckIn={() => setIsCheckInOpen(true)} />
 
         {/* ── PERSONAL STATE ENGINE 2.0 MONITOR ── */}
         <motion.div
