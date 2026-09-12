@@ -441,6 +441,9 @@ function formatSanitizedSignalSummary(signal: WellnessSignal): string {
     case 'companion_session': {
       return 'Dialogue interaction with AI Companion.';
     }
+    case 'camera_behavior': {
+      return 'Camera behavioral observation (privacy-preserved local metrics).';
+    }
     case 'intervention_outcome': {
       return `Post-reset outcome reflection for ${signal.features.triggers?.[0] || 'intervention'}.`;
     }
@@ -459,6 +462,8 @@ function formatModalityLabel(modality: string): string {
       return 'Voice Observation';
     case 'companion_session':
       return 'Companion Dialogue';
+    case 'camera_behavior':
+      return 'Camera Observation';
     case 'intervention_outcome':
       return 'Intervention Outcome';
     default:

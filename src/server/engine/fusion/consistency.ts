@@ -246,6 +246,8 @@ function formatModalityLabel(modality: SignalModality): string {
       return 'acoustic voice analysis';
     case 'companion_session':
       return 'companion dialogue';
+    case 'camera_behavior':
+      return 'camera behavioral analysis';
     case 'intervention_outcome':
       return 'intervention response';
     default:

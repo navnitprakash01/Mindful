@@ -20,6 +20,10 @@ import {
   VoiceSignalProvider,
   VoiceObservationInput,
 } from './voiceSignalProvider';
+import {
+  CameraSignalProvider,
+  CameraObservationInput,
+} from './cameraSignalProvider';
 
 export type {
   MoodLogInput,
@@ -27,12 +31,14 @@ export type {
   CompanionSessionInput,
   VoiceTranscriptInput,
   VoiceObservationInput,
+  CameraObservationInput,
 };
 
 const moodProvider = new MoodSignalProvider();
 const journalProvider = new JournalSignalProvider();
 const companionProvider = new CompanionSignalProvider();
 const voiceProvider = new VoiceSignalProvider();
+const cameraProvider = new CameraSignalProvider();
 
 export class SignalExtractor {
   /**
@@ -64,6 +70,14 @@ export class SignalExtractor {
    */
   public static fromVoiceObservation(input: VoiceObservationInput): WellnessSignal {
     const signals = voiceProvider.extractSignals(input);
+    return signals[0];
+  }
+
+  /**
+   * Extract a WellnessSignal from a structured Camera Behavioral observation
+   */
+  public static fromCameraObservation(input: CameraObservationInput): WellnessSignal {
+    const signals = cameraProvider.extractSignals(input);
     return signals[0];
   }
 }

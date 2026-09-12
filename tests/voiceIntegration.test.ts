@@ -282,9 +282,9 @@ describe('Voice Integration & Intelligence Pipeline Tests', () => {
     const rec = await interventionService.getRecommendation(userId);
     assert.ok(rec);
     assert.ok(rec.intervention);
-    // When stress is elevated, breathing or grounding interventions take priority
+    // When stress is elevated, breathing, grounding, or wind-down interventions take priority
     assert.ok(
-      ['breathing-reset', 'box-breathing', 'grounding-54321', 'progressive-relaxation'].includes(
+      ['breathing-reset', 'box-breathing', 'grounding-54321', 'progressive-relaxation', 'sleep-winddown'].includes(
         rec.intervention.id
       ),
       `Expected stress-mitigating intervention, got ${rec.intervention.id}`

@@ -8,6 +8,7 @@ export type SignalModality =
   | 'voice_transcript'
   | 'companion_session'
   | 'mood_checkin'
+  | 'camera_behavior'
   | 'habit_action'
   | 'future_behavior'
   | 'future_wearable'
