@@ -1,69 +1,133 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, AlertCircle, Loader2 } from 'lucide-react';
+
+export type VoiceStatus = 'idle' | 'recording' | 'processing' | 'error' | 'permission_denied';
 
 interface VoiceButtonProps {
-  isRecording: boolean;
+  status?: VoiceStatus;
+  isRecording?: boolean; // Backwards compatible
   onClick: () => void;
   disabled?: boolean;
+  errorMessage?: string;
 }
 
-export const VoiceButton: React.FC<VoiceButtonProps> = ({ 
-  isRecording, 
-  onClick, 
-  disabled = false 
+export const VoiceButton: React.FC<VoiceButtonProps> = ({
+  status = 'idle',
+  isRecording = false,
+  onClick,
+  disabled = false,
+  errorMessage,
 }) => {
-  return (
-    <motion.button
-      onClick={onClick}
-      disabled={disabled}
-      whileHover={{ scale: disabled ? 1 : 1.05 }}
-      whileTap={{ scale: disabled ? 1 : 0.92 }}
-      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all disabled:opacity-30 shadow-[0_4px_16px_rgba(108,114,232,0.40)] ${
-        isRecording
-          ? 'bg-[#e8799a] animate-pulse ring-2 ring-[#e8799a]/50'
-          : 'bg-gradient-to-br from-[#6c72e8] to-[#5055c8] hover:from-[#5055c8] hover:to-[#3b3db5]'
-      }`}
-      aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-      aria-pressed={isRecording}
-    >
-      <AnimatePresence mode="wait">
-        {isRecording ? (
-          <motion.div
-            key="recording"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            className="flex items-center gap-1 text-white"
-          >
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-1.5 h-1.5 rounded-full bg-white/80"
-            />
-            <span className="text-xs font-medium">REC</span>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="idle"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-          >
-            <Mic className="w-5 h-5 text-white" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+  // Determine effective status
+  const currentStatus: VoiceStatus = isRecording ? 'recording' : (status as VoiceStatus);
 
-      {isRecording && (
-        <motion.div
-          className="absolute inset-0 rounded-xl border-2 border-white/40"
-          initial={{ scale: 1, opacity: 0.6 }}
-          animate={{ scale: 1.6, opacity: 0 }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
-        />
-      )}
-    </motion.button>
+  const getButtonStyles = () => {
+    switch (currentStatus) {
+      case 'recording':
+        return 'bg-gradient-to-br from-[#e8799a] to-[#fbbf24] shadow-[0_0_24px_rgba(232,121,154,0.50)] ring-2 ring-[#e8799a]/50';
+      case 'processing':
+        return 'bg-[rgba(108,114,232,0.25)] border border-[rgba(108,114,232,0.40)] text-[#c0c4ea]';
+      case 'permission_denied':
+      case 'error':
+        return 'bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.30)] text-[#f87171]';
+      case 'idle':
+      default:
+        return 'bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.08)] text-[rgba(232,234,246,0.75)]';
+    }
+  };
+
+  const getAriaLabel = () => {
+    switch (currentStatus) {
+      case 'recording':
+        return 'Stop voice recording';
+      case 'processing':
+        return 'Processing voice reflection';
+      case 'permission_denied':
+        return 'Microphone permission denied';
+      case 'error':
+        return 'Voice error';
+      case 'idle':
+      default:
+        return 'Start voice reflection';
+    }
+  };
+
+  return (
+    <div className="relative inline-flex items-center">
+      <motion.button
+        type="button"
+        onClick={onClick}
+        disabled={disabled || currentStatus === 'processing'}
+        whileHover={{ scale: disabled ? 1 : 1.05 }}
+        whileTap={{ scale: disabled ? 1 : 0.92 }}
+        className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all disabled:opacity-40 ${getButtonStyles()}`}
+        aria-label={getAriaLabel()}
+        aria-pressed={currentStatus === 'recording'}
+        title={errorMessage || getAriaLabel()}
+      >
+        <AnimatePresence mode="wait">
+          {currentStatus === 'recording' && (
+            <motion.div
+              key="recording"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="flex items-center gap-1 text-white"
+            >
+              <span className="text-[11px] font-semibold tracking-wider">REC</span>
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.6, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-1.5 h-1.5 rounded-full bg-white"
+              />
+            </motion.div>
+          )}
+
+          {currentStatus === 'processing' && (
+            <motion.div
+              key="processing"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+            >
+              <Loader2 className="w-5 h-5 animate-spin text-[#c0c4ea]" />
+            </motion.div>
+          )}
+
+          {(currentStatus === 'error' || currentStatus === 'permission_denied') && (
+            <motion.div
+              key="error"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+            >
+              <AlertCircle className="w-5 h-5 text-[#f87171]" />
+            </motion.div>
+          )}
+
+          {currentStatus === 'idle' && (
+            <motion.div
+              key="idle"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+            >
+              <Mic className="w-5 h-5 text-[rgba(232,234,246,0.75)]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {currentStatus === 'recording' && (
+          <motion.div
+            className="absolute inset-0 rounded-xl border-2 border-white/40 pointer-events-none"
+            initial={{ scale: 1, opacity: 0.6 }}
+            animate={{ scale: 1.5, opacity: 0 }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
+          />
+        )}
+      </motion.button>
+    </div>
   );
 };

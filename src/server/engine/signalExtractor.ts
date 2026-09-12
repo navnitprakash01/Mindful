@@ -16,17 +16,23 @@ import {
   CompanionSessionInput,
   VoiceTranscriptInput,
 } from './providers';
+import {
+  VoiceSignalProvider,
+  VoiceObservationInput,
+} from './voiceSignalProvider';
 
 export type {
   MoodLogInput,
   JournalInput,
   CompanionSessionInput,
   VoiceTranscriptInput,
+  VoiceObservationInput,
 };
 
 const moodProvider = new MoodSignalProvider();
 const journalProvider = new JournalSignalProvider();
 const companionProvider = new CompanionSignalProvider();
+const voiceProvider = new VoiceSignalProvider();
 
 export class SignalExtractor {
   /**
@@ -50,6 +56,14 @@ export class SignalExtractor {
    */
   public static fromCompanionSession(input: CompanionSessionInput): WellnessSignal {
     const signals = companionProvider.extractSignals(input);
+    return signals[0];
+  }
+
+  /**
+   * Extract a WellnessSignal from a structured Voice Observation and acoustic metrics
+   */
+  public static fromVoiceObservation(input: VoiceObservationInput): WellnessSignal {
+    const signals = voiceProvider.extractSignals(input);
     return signals[0];
   }
 }

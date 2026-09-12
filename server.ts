@@ -13,6 +13,7 @@ import moodRoutes from "./src/server/routes/moodRoutes";
 import stateRoutes from "./src/server/routes/stateRoutes";
 import patternRoutes from "./src/server/routes/patternRoutes";
 import interventionRoutes from "./src/server/routes/interventionRoutes";
+import voiceRoutes from "./src/server/routes/voiceRoutes";
 import { supabase } from "./src/server/lib/supabase";
 import { stateService } from "./src/server/services/stateService";
 import { SignalExtractor } from "./src/server/engine/signalExtractor";
@@ -93,6 +94,9 @@ app.use("/api/patterns", patternRoutes);
 
 // Personalized Intervention API Routes
 app.use("/api/interventions", interventionRoutes);
+
+// Advanced Voice Intelligence API Routes
+app.use("/api/voice", voiceRoutes);
 
 // Companion API Routes
 app.use("/api/companion", companionRoutes);
