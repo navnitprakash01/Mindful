@@ -7,7 +7,7 @@ import type {
   PromptContext 
 } from '../types/companion';
 
-const GEMINI_MODEL = 'gemini-3.6-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const MAX_JOURNAL_ENTRIES = 5;
 const MAX_CONVERSATION_MESSAGES = 10;
 
