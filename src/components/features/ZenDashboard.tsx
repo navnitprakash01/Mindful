@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -11,12 +11,16 @@ import {
   Activity,
   TrendingUp,
   Star,
+  Plus,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { PageTransition } from '../ui/PageTransition';
 import { EmptyState } from '../ui/EmptyState';
+import { MoodCheckInModal } from './MoodCheckInModal';
+import { PatternInsightsCard } from './PatternInsightsCard';
+import { InterventionRecommendationCard } from './intervention/InterventionRecommendationCard';
 import {
   staggerContainer,
   staggerChild,
@@ -152,7 +156,11 @@ export const ZenDashboard: React.FC = () => {
     toggleHabitCompletion,
     journalEntries,
     moodLogs,
+    personalState,
+    isStateLoading,
   } = useApp();
+
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const firstName = userProfile?.name?.trim()?.split(' ')[0] || 'Friend';
@@ -164,6 +172,15 @@ export const ZenDashboard: React.FC = () => {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  /**
+   * Cold-start detection:
+   * overallConfidence = 0 means the engine has no real signal evidence yet.
+   * We refuse to display invented dimension values in that state.
+   */
+  const hasRealEvidence =
+    (personalState?.overallConfidence ?? 0) >= 0.10 &&
+    (personalState?.activeSignalsCount ?? 0) > 0;
 
   // Last 7 days mood sparkline data
   const weeklyMoodData = useMemo(() => {
@@ -200,6 +217,12 @@ export const ZenDashboard: React.FC = () => {
 
   return (
     <PageTransition transitionKey="dashboard">
+      {/* Quick Check-in Modal */}
+      <MoodCheckInModal
+        isOpen={isCheckInOpen}
+        onClose={() => setIsCheckInOpen(false)}
+      />
+
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-12 pt-28 pb-36">
 
         {/* ── HERO PRESENCE ── */}
@@ -279,6 +302,183 @@ export const ZenDashboard: React.FC = () => {
           </motion.div>
         </section>
 
+        {/* ── PERSONAL STATE ENGINE 2.0 MONITOR ── */}
+        <motion.div
+          variants={scaleIn}
+          initial="hidden"
+          animate="visible"
+          className="mb-8 p-5 sm:p-6 rounded-[28px] bg-[rgba(255,255,255,0.03)] border border-[rgba(108,114,232,0.25)] shadow-[0_12px_40px_rgba(0,0,0,0.40)] backdrop-blur-xl"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[rgba(108,114,232,0.15)] border border-[rgba(108,114,232,0.30)] flex items-center justify-center">
+                <Activity className="w-4 h-4 text-[#c0c4ea]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display-lg text-lg text-[rgba(232,234,246,0.95)]">
+                    Personal State Engine
+                  </h3>
+                  <Badge variant="lavender" size="sm">Phase 1 Active</Badge>
+                </div>
+                <p className="text-[11px] text-[rgba(232,234,246,0.40)]">
+                  Unified multimodal signal estimate • Exponential decay (t½ = 12h)
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasRealEvidence ? (
+                <Badge variant="sage" size="sm">
+                  {Math.round((personalState?.overallConfidence ?? 0) * 100)}% Confidence
+                </Badge>
+              ) : (
+                <Badge variant="amber" size="sm">Awaiting data</Badge>
+              )}
+              <Button
+                onClick={() => setCurrentView('analytics')}
+                variant="ghost"
+                size="sm"
+                rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+              >
+                Deep Insights
+              </Button>
+            </div>
+          </div>
+
+          {/* Cold-start: no real evidence yet */}
+          {!hasRealEvidence ? (
+            <div className="py-4">
+              {isStateLoading ? (
+                /* Loading skeleton */
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {Array.from({ length: 6 }).map((_, idx) => (
+                    <div key={idx} className="h-20 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                /* Establishing baseline empty state */
+                <div className="flex flex-col items-center justify-center py-6 gap-4 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-[rgba(108,114,232,0.10)] border border-[rgba(108,114,232,0.20)] flex items-center justify-center">
+                    <Activity className="w-6 h-6 text-[rgba(108,114,232,0.60)]" />
+                  </div>
+                  <div className="space-y-1 max-w-sm">
+                    <p className="font-display-lg text-lg text-[rgba(232,234,246,0.80)]">
+                      Establishing your baseline
+                    </p>
+                    <p className="text-xs text-[rgba(232,234,246,0.40)] leading-relaxed">
+                      Complete your first mood check-in to activate the Personal State Engine and begin measuring your wellness dimensions.
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Plus className="w-3.5 h-3.5" />}
+                    onClick={() => setIsCheckInOpen(true)}
+                  >
+                    Begin First Check-in
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Real dimension data */
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                {
+                  label: 'Mood',
+                  value: personalState?.dimensions?.mood?.value ?? personalState?.mood ?? 50,
+                  confidence: Math.round((personalState?.dimensions?.mood?.confidence ?? 0) * 100),
+                  trend: personalState?.dimensions?.mood?.trend ?? 'stable',
+                  color: '#6ee7b7',
+                },
+                {
+                  label: 'Stress Load',
+                  value: personalState?.dimensions?.stress?.value ?? personalState?.stress ?? 50,
+                  confidence: Math.round((personalState?.dimensions?.stress?.confidence ?? 0) * 100),
+                  trend: personalState?.dimensions?.stress?.trend ?? 'stable',
+                  color: '#f4a8c0',
+                },
+                {
+                  label: 'Fatigue',
+                  value: personalState?.dimensions?.fatigue?.value ?? personalState?.fatigue ?? 50,
+                  confidence: Math.round((personalState?.dimensions?.fatigue?.confidence ?? 0) * 100),
+                  trend: personalState?.dimensions?.fatigue?.trend ?? 'stable',
+                  color: '#fbbf24',
+                },
+                {
+                  label: 'Vitality / Energy',
+                  value: personalState?.dimensions?.energy?.value ?? personalState?.energy ?? 50,
+                  confidence: Math.round((personalState?.dimensions?.energy?.confidence ?? 0) * 100),
+                  trend: personalState?.dimensions?.energy?.trend ?? 'stable',
+                  color: '#38bdf8',
+                },
+                {
+                  label: 'Focus / Clarity',
+                  value: personalState?.dimensions?.focus?.value ?? personalState?.focus ?? 50,
+                  confidence: Math.round((personalState?.dimensions?.focus?.confidence ?? 0) * 100),
+                  trend: personalState?.dimensions?.focus?.trend ?? 'stable',
+                  color: '#c0c4ea',
+                },
+                {
+                  label: 'Cognitive Load',
+                  value: personalState?.dimensions?.cognitiveLoad?.value ?? personalState?.cognitiveLoad ?? 50,
+                  confidence: Math.round((personalState?.dimensions?.cognitiveLoad?.confidence ?? 0) * 100),
+                  trend: personalState?.dimensions?.cognitiveLoad?.trend ?? 'stable',
+                  color: '#a78bfa',
+                },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)] flex flex-col justify-between"
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-[rgba(232,234,246,0.40)] truncate">
+                      {item.label}
+                    </span>
+                    <span className="text-[10px] font-mono text-[rgba(108,114,232,0.70)]">
+                      {item.confidence}%
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <span className="font-display-lg text-2xl text-[rgba(232,234,246,0.90)]">
+                      {item.value}
+                    </span>
+                    <span className="text-[10px] text-[rgba(232,234,246,0.30)]">/100</span>
+                  </div>
+                  <div className="h-1 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${item.value}%`,
+                        backgroundColor: item.color,
+                        boxShadow: `0 0 6px ${item.color}80`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* ── PHASE 2: LONGITUDINAL PATTERN ENGINE INSIGHTS ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
+        >
+          <PatternInsightsCard />
+        </motion.div>
+
+        {/* ── PHASE 3: PERSONALIZED INTERVENTION RECOMMENDATION ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <InterventionRecommendationCard />
+        </motion.div>
+
         {/* ── BENTO GRID ── */}
         <motion.div
           variants={staggerContainer}
@@ -349,7 +549,7 @@ export const ZenDashboard: React.FC = () => {
                   </span>
                 </p>
                 <Button
-                  onClick={() => setCurrentView('mood')}
+                  onClick={() => setIsCheckInOpen(true)}
                   variant="ghost"
                   size="sm"
                   rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
