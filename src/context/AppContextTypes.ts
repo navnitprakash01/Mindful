@@ -7,6 +7,7 @@ import {
   AppNotification,
   ChatMessage,
   CompanionMode,
+  PersonalState,
 } from '../types';
 
 export interface AppContextType {
@@ -16,13 +17,28 @@ export interface AppContextType {
   isJournalLoading: boolean;
   isJournalSaving: boolean;
   journalError: string | null;
-  addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'wordCount'>) => Promise<JournalEntry>;
+  addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'wordCount'>) => Promise<JournalEntry | null>;
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => Promise<JournalEntry | null>;
-  deleteJournalEntry: (id: string) => Promise<void>;
-  toggleFavoriteEntry: (id: string) => Promise<void>;
+  deleteJournalEntry: (id: string) => Promise<boolean>;
+  toggleFavoriteEntry: (id: string) => Promise<JournalEntry | null>;
   refreshJournalEntries: () => Promise<void>;
   moodLogs: MoodLog[];
-  addMoodLog: (log: Omit<MoodLog, 'id' | 'timestamp'>) => void;
+  addMoodLog: (
+    log: Omit<MoodLog, 'id' | 'timestamp'>,
+    onSuccess?: () => void | Promise<void>
+  ) => Promise<import('../context/MoodContext').AddMoodLogResult>;
+  isMoodLoading: boolean;
+  reloadMoodLogs: () => Promise<void>;
+  personalState: PersonalState | null;
+  stateHistory: PersonalState[];
+  personalBaseline: import('../types').PersonalBaseline | null;
+  patterns: import('../types').PersonalPattern[];
+  isPatternsLoading: boolean;
+  isStateLoading: boolean;
+  stateError: string | null;
+  refreshState: () => Promise<void>;
+  recalculateState: () => Promise<void>;
+  refreshPatterns: () => Promise<void>;
   habits: Habit[];
   toggleHabitCompletion: (id: string, dateStr: string) => void;
   userProfile: UserProfile;
@@ -43,4 +59,19 @@ export interface AppContextType {
   setActiveSoundscape: (type: string | null) => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
+  // Phase 3: Personalized Interventions
+  recommendation: import('../types').InterventionRecommendation | null;
+  activeSession: import('../types').InterventionSession | null;
+  sessionHistory: import('../types').InterventionSession[];
+  effectiveness: Record<string, import('../types').InterventionEffectiveness>;
+  isPlayerOpen: boolean;
+  playerIntervention: import('../types').InterventionDefinition | null;
+  openPlayer: (intervention?: import('../types').InterventionDefinition) => void;
+  closePlayer: () => void;
+  startSession: (interventionId: string) => Promise<import('../types').InterventionSession | null>;
+  completeSession: (
+    sessionId: string,
+    payload: import('../context/InterventionContext').CompleteSessionPayload
+  ) => Promise<import('../types').InterventionSession | null>;
+  refreshRecommendation: (textContext?: string) => Promise<void>;
 }

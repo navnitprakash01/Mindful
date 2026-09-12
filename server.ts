@@ -9,7 +9,14 @@ import { createServer as createViteServer } from "vite";
 import journalRoutes from "./src/server/routes/journalRoutes";
 import companionRoutes from "./src/server/routes/companionRoutes";
 import conversationRoutes from "./src/server/routes/conversationRoutes";
+import moodRoutes from "./src/server/routes/moodRoutes";
+import stateRoutes from "./src/server/routes/stateRoutes";
+import patternRoutes from "./src/server/routes/patternRoutes";
+import interventionRoutes from "./src/server/routes/interventionRoutes";
 import { supabase } from "./src/server/lib/supabase";
+import { stateService } from "./src/server/services/stateService";
+import { SignalExtractor } from "./src/server/engine/signalExtractor";
+import { shouldEmitCompanionSignal } from "./src/server/engine/providers";
 
 
 
@@ -65,6 +72,7 @@ if (process.env.GEMINI_API_KEY) {
     },
   });
 }
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // Health API
 app.get("/api/health", (_req, res) => {
@@ -73,6 +81,18 @@ app.get("/api/health", (_req, res) => {
 
 // Journal API Routes
 app.use("/api/journals", journalRoutes);
+
+// Mood API Routes
+app.use("/api/moods", moodRoutes);
+
+// Personal State API Routes
+app.use("/api/state", stateRoutes);
+
+// Longitudinal Pattern API Routes
+app.use("/api/patterns", patternRoutes);
+
+// Personalized Intervention API Routes
+app.use("/api/interventions", interventionRoutes);
 
 // Companion API Routes
 app.use("/api/companion", companionRoutes);
@@ -92,6 +112,7 @@ app.post("/api/gemini/companion", async (req, res) => {
     const cleanMessage = message.trim();
 
     // 1. Retrieve optional authenticated journal context securely
+    let authenticatedUser: any = null;
     let journalContextText = "";
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -99,6 +120,7 @@ app.post("/api/gemini/companion", async (req, res) => {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
         if (user && !authError) {
+          authenticatedUser = user;
           const { data: entries, error: dbError } = await supabase
             .from("journal_entries")
             .select("created_at, mood, emotion, ai_summary, content")
@@ -178,7 +200,7 @@ Core Principles:
     contents += `User: ${cleanMessage}\nCompanion:`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents,
       config: {
         systemInstruction: sysInstruction,
@@ -211,6 +233,21 @@ Core Principles:
       ]
     };
 
+    // Calibrated companion state signal emission for authenticated user
+    if (authenticatedUser) {
+      try {
+        const historyCount = Array.isArray(conversationHistory) ? conversationHistory.length : 1;
+        if (shouldEmitCompanionSignal(cleanMessage, historyCount)) {
+          const companionSignal = SignalExtractor.fromCompanionSession({
+            userId: authenticatedUser.id,
+            mode,
+            recentMessagesCount: historyCount,
+          });
+          await stateService.ingestSignal(companionSignal);
+        }
+      } catch {}
+    }
+
     return res.json({
       reply,
       suggestedPathways: pathwaysByMode[mode] || pathwaysByMode["Empathetic Listener"]
@@ -236,19 +273,27 @@ app.post("/api/gemini/analyze", async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || !ai) {
+      // Deterministic Local Analysis fallback (zero-budget mode, no fake AI text)
+      const localSignal = SignalExtractor.fromJournal({
+        userId: 'anonymous',
+        content: journalText,
+      });
+
       return res.json({
-        dominantEmotion: "Contemplative",
-        dominantScore: 78,
+        dominantEmotion: "Reflective",
+        dominantScore: localSignal.estimates.mood?.value ?? 70,
         emotions: [
-          { name: "Stress", score: 65 },
-          { name: "Anxiety", score: 45 },
-          { name: "Hope", score: 30 },
-          { name: "Confidence", score: 40 },
+          { name: "Focus", score: localSignal.estimates.focus?.value ?? 70 },
+          { name: "Stress", score: localSignal.estimates.stress?.value ?? 30 },
+          { name: "Vitality", score: localSignal.estimates.energy?.value ?? 65 },
+          { name: "Fatigue", score: localSignal.estimates.fatigue?.value ?? 35 },
         ],
-        summary: "A reflective entry highlighting inner awareness and emotional processing.",
-        themes: ["Self-awareness", "Emotional processing"],
-        suggestedAction: "Take a 5-minute quiet walk outside to integrate your thoughts.",
-        reflectionPrompt: "What small step could bring you more peace right now?",
+        summary: "Analyzed locally using transparent linguistic heuristics.",
+        themes: localSignal.features.themes?.length ? localSignal.features.themes : ["Reflection"],
+        suggestedAction: "Take a quiet moment to breathe and observe your thoughts without judgment.",
+        reflectionPrompt: "What is one gentle step you can take for yourself right now?",
+        stateEstimates: localSignal.estimates,
+        isLocalSynthesis: true,
       });
     }
 
@@ -279,7 +324,7 @@ Guidelines:
 - reflectionPrompt: one open-ended question`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -288,42 +333,92 @@ Guidelines:
 
     console.log("Raw Gemini response:", response.text);
 
+    // Check for authenticated user to emit personal state signal
+    let authenticatedUserId: string | null = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.substring(7));
+        if (user) authenticatedUserId = user.id;
+      } catch {}
+    }
+
     try {
       const parsed = JSON.parse(response.text || "{}");
       // Validate and ensure all fields exist
+      const emotionsList = Array.isArray(parsed.emotions) ? parsed.emotions.slice(0, 4).map((e: any) => ({
+        name: e.name || "Unknown",
+        score: typeof e.score === 'number' ? e.score : 50
+      })) : [
+        { name: "Stress", score: 65 },
+        { name: "Anxiety", score: 45 },
+        { name: "Hope", score: 30 },
+        { name: "Confidence", score: 40 }
+      ];
+
+      const stressMatch = emotionsList.find((e: any) => e.name.toLowerCase() === 'stress' || e.name.toLowerCase() === 'anxiety');
+      const dominantScore = typeof parsed.dominantScore === 'number' ? parsed.dominantScore : 75;
+
+      const stateEstimates = {
+        mood: { value: dominantScore, confidence: 0.85 },
+        stress: { value: stressMatch ? stressMatch.score : 30, confidence: 0.80 },
+        fatigue: { value: 35, confidence: 0.70 },
+        energy: { value: 65, confidence: 0.70 },
+        focus: { value: 75, confidence: 0.80 },
+        cognitiveLoad: { value: 35, confidence: 0.75 },
+      };
+
       const result = {
         dominantEmotion: parsed.dominantEmotion || "Reflective",
-        dominantScore: typeof parsed.dominantScore === 'number' ? parsed.dominantScore : 75,
-        emotions: Array.isArray(parsed.emotions) ? parsed.emotions.slice(0, 4).map((e: any) => ({
-          name: e.name || "Unknown",
-          score: typeof e.score === 'number' ? e.score : 50
-        })) : [
-          { name: "Stress", score: 65 },
-          { name: "Anxiety", score: 45 },
-          { name: "Hope", score: 30 },
-          { name: "Confidence", score: 40 }
-        ],
+        dominantScore,
+        emotions: emotionsList,
         summary: parsed.summary || "A reflective entry capturing current life experiences.",
         themes: Array.isArray(parsed.themes) ? parsed.themes.slice(0, 3) : ["Self-awareness", "Emotional processing"],
         suggestedAction: parsed.suggestedAction || "Sip a glass of warm water slowly and notice the physical warmth.",
         reflectionPrompt: parsed.reflectionPrompt || "What small step could bring you more peace right now?",
+        stateEstimates,
       };
+
+      if (authenticatedUserId) {
+        const signal = SignalExtractor.fromJournal({
+          userId: authenticatedUserId,
+          content: journalText,
+          moodScore: result.dominantScore,
+          aiAnalysis: result,
+        });
+        await stateService.ingestSignal(signal);
+      }
+
       return res.json(result);
     } catch {
-      return res.json({
-        dominantEmotion: "Reflective",
-        dominantScore: 75,
-        emotions: [
-          { name: "Stress", score: 65 },
-          { name: "Anxiety", score: 45 },
-          { name: "Hope", score: 30 },
-          { name: "Confidence", score: 40 }
-        ],
-        summary: "A heartfelt reflection capturing current life experiences.",
-        themes: ["Self-awareness", "Emotional processing"],
-        suggestedAction: "Sip a glass of warm water slowly and notice the physical warmth.",
-        reflectionPrompt: "What small step could bring you more peace right now?",
+      // Deterministic fallback if model output failed JSON parse
+      const localSignal = SignalExtractor.fromJournal({
+        userId: authenticatedUserId || 'anonymous',
+        content: journalText,
       });
+
+      const fallbackResult = {
+        dominantEmotion: "Reflective",
+        dominantScore: localSignal.estimates.mood?.value ?? 70,
+        emotions: [
+          { name: "Focus", score: localSignal.estimates.focus?.value ?? 70 },
+          { name: "Stress", score: localSignal.estimates.stress?.value ?? 30 },
+          { name: "Vitality", score: localSignal.estimates.energy?.value ?? 65 },
+          { name: "Fatigue", score: localSignal.estimates.fatigue?.value ?? 35 },
+        ],
+        summary: "Locally processed reflection with deterministic wellness signal extraction.",
+        themes: localSignal.features.themes?.length ? localSignal.features.themes : ["Emotional Processing"],
+        suggestedAction: "Take a 5-minute quiet stretch to decompress physical tension.",
+        reflectionPrompt: "What is currently demanding most of your mental energy?",
+        stateEstimates: localSignal.estimates,
+        isLocalSynthesis: true,
+      };
+
+      if (authenticatedUserId) {
+        await stateService.ingestSignal(localSignal);
+      }
+
+      return res.json(fallbackResult);
     }
   } catch (err) {
     console.error("Journal analysis error:", err);
@@ -352,4 +447,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}

@@ -24,6 +24,10 @@ function mapRowToResponse(row: JournalEntryRow): JournalEntryResponse {
     aiAnalysis: row.ai_analysis ?? undefined,
     favorite: row.favorite,
     wordCount: row.word_count,
+    aiEmotions: row.ai_emotions ?? undefined,
+    aiThemes: row.ai_themes ?? undefined,
+    aiSuggestedAction: row.ai_suggested_action ?? undefined,
+    aiReflectionPrompt: row.ai_reflection_prompt ?? undefined,
   };
 }
 

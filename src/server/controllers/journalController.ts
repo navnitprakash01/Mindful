@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { JournalEntry } from '../../types';
+import { stateService } from '../services/stateService';
+import { SignalExtractor } from '../engine/signalExtractor';
 
 interface JournalListQuery {
   page?: string;
@@ -20,6 +22,10 @@ interface JournalCreateBody {
   aiSummary?: string;
   aiAnalysis?: string;
   favorite: boolean;
+  aiEmotions?: { name: string; score: number }[];
+  aiThemes?: string[];
+  aiSuggestedAction?: string;
+  aiReflectionPrompt?: string;
 }
 
 interface JournalUpdateBody {
@@ -32,6 +38,10 @@ interface JournalUpdateBody {
   aiSummary?: string;
   aiAnalysis?: string;
   favorite?: boolean;
+  aiEmotions?: { name: string; score: number }[];
+  aiThemes?: string[];
+  aiSuggestedAction?: string;
+  aiReflectionPrompt?: string;
 }
 
 function mapRowToEntry(row: Record<string, unknown>): JournalEntry {
@@ -48,6 +58,10 @@ function mapRowToEntry(row: Record<string, unknown>): JournalEntry {
     aiAnalysis: row.ai_analysis as string | undefined,
     favorite: row.favorite as boolean,
     wordCount: row.word_count as number,
+    aiEmotions: (row.ai_emotions as { name: string; score: number }[]) ?? undefined,
+    aiThemes: (row.ai_themes as string[]) ?? undefined,
+    aiSuggestedAction: row.ai_suggested_action as string | undefined,
+    aiReflectionPrompt: row.ai_reflection_prompt as string | undefined,
   };
 }
 
@@ -76,6 +90,10 @@ export const journalController = {
           ai_summary: body.aiSummary,
           ai_analysis: body.aiAnalysis,
           favorite: body.favorite ?? false,
+          ...(body.aiEmotions ? { ai_emotions: body.aiEmotions } : {}),
+          ...(body.aiThemes ? { ai_themes: body.aiThemes } : {}),
+          ...(body.aiSuggestedAction ? { ai_suggested_action: body.aiSuggestedAction } : {}),
+          ...(body.aiReflectionPrompt ? { ai_reflection_prompt: body.aiReflectionPrompt } : {}),
         })
         .select()
         .single();
@@ -94,6 +112,31 @@ export const journalController = {
           hint: error.hint,
           code: error.code,
         });
+      }
+
+      // Emit personal state signal
+      try {
+        const signal = SignalExtractor.fromJournal({
+          id: data.id,
+          userId,
+          content: body.content,
+          tags: body.tags,
+          mood: body.mood,
+          moodScore: body.moodScore,
+          emotion: body.emotion,
+          aiAnalysis: {
+            dominantEmotion: body.emotion || body.mood,
+            dominantScore: body.moodScore,
+            emotions: body.aiEmotions,
+            themes: body.aiThemes,
+            summary: body.aiSummary,
+            suggestedAction: body.aiSuggestedAction,
+            reflectionPrompt: body.aiReflectionPrompt,
+          },
+        });
+        await stateService.ingestSignal(signal);
+      } catch (sigErr) {
+        console.warn('Journal signal emission notice:', sigErr);
       }
 
       return res.status(201).json(mapRowToEntry(data));
@@ -195,6 +238,10 @@ export const journalController = {
       if (body.aiSummary !== undefined) updates.ai_summary = body.aiSummary;
       if (body.aiAnalysis !== undefined) updates.ai_analysis = body.aiAnalysis;
       if (body.favorite !== undefined) updates.favorite = body.favorite;
+      if (body.aiEmotions !== undefined) updates.ai_emotions = body.aiEmotions;
+      if (body.aiThemes !== undefined) updates.ai_themes = body.aiThemes;
+      if (body.aiSuggestedAction !== undefined) updates.ai_suggested_action = body.aiSuggestedAction;
+      if (body.aiReflectionPrompt !== undefined) updates.ai_reflection_prompt = body.aiReflectionPrompt;
 
       if (body.content !== undefined) {
         updates.word_count = body.content.trim().split(/\s+/).filter(Boolean).length;
@@ -214,6 +261,30 @@ export const journalController = {
         }
         console.error('Update journal entry error:', error);
         return res.status(500).json({ error: 'Failed to update journal entry' });
+      }
+
+      // Emit updated signal into Personal State Engine
+      try {
+        const signal = SignalExtractor.fromJournal({
+          id: data.id,
+          userId,
+          content: data.content,
+          mood: data.mood,
+          moodScore: data.mood_score,
+          emotion: data.emotion,
+          aiAnalysis: {
+            dominantEmotion: data.emotion || data.mood,
+            dominantScore: data.mood_score,
+            emotions: data.ai_emotions,
+            themes: data.ai_themes,
+            summary: data.ai_summary,
+            suggestedAction: data.ai_suggested_action,
+            reflectionPrompt: data.ai_reflection_prompt,
+          },
+        });
+        await stateService.ingestSignal(signal);
+      } catch (sigErr) {
+        console.warn('Journal update signal emission notice:', sigErr);
       }
 
       return res.json(mapRowToEntry(data));

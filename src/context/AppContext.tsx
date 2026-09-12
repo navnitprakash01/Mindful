@@ -7,6 +7,8 @@ import { ProfileProvider, useProfile } from './ProfileContext';
 import { NotificationsProvider, useNotifications } from './NotificationsContext';
 import { UIProvider, useUI } from './UIContext';
 import { ChatProvider, useChat } from './ChatContext';
+import { StateProvider, usePersonalState } from './StateContext';
+import { InterventionProvider, useIntervention } from './InterventionContext';
 import { useToast } from './ToastContext';
 import { AppContextType } from './AppContextTypes';
 
@@ -21,7 +23,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             <NotificationsProvider>
               <UIProvider>
                 <ChatProvider>
-                  <AppContent>{children}</AppContent>
+                  <StateProvider>
+                    <InterventionProvider>
+                      <AppContent>{children}</AppContent>
+                    </InterventionProvider>
+                  </StateProvider>
                 </ChatProvider>
               </UIProvider>
             </NotificationsProvider>
@@ -41,6 +47,8 @@ const AppContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const notifications = useNotifications();
   const ui = useUI();
   const chat = useChat();
+  const state = usePersonalState();
+  const intervention = useIntervention();
   const toast = useToast();
 
   const value: AppContextType = {
@@ -52,6 +60,8 @@ const AppContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ...notifications,
     ...ui,
     ...chat,
+    ...state,
+    ...intervention,
     ...toast,
   };
 
@@ -69,3 +79,5 @@ export const useApp = () => {
   }
   return context;
 };
+
+export { useIntervention } from './InterventionContext';

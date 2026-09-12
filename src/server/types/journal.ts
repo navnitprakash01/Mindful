@@ -11,6 +11,10 @@ export interface JournalEntryRow {
   ai_analysis?: string;
   favorite: boolean;
   word_count: number;
+  ai_emotions?: { name: string; score: number }[];
+  ai_themes?: string[];
+  ai_suggested_action?: string;
+  ai_reflection_prompt?: string;
   created_at: string;
   updated_at: string;
 }
@@ -25,6 +29,10 @@ export interface CreateJournalEntryInput {
   aiSummary?: string;
   aiAnalysis?: string;
   favorite?: boolean;
+  aiEmotions?: { name: string; score: number }[];
+  aiThemes?: string[];
+  aiSuggestedAction?: string;
+  aiReflectionPrompt?: string;
 }
 
 export interface UpdateJournalEntryInput {
@@ -37,6 +45,10 @@ export interface UpdateJournalEntryInput {
   aiSummary?: string;
   aiAnalysis?: string;
   favorite?: boolean;
+  aiEmotions?: { name: string; score: number }[];
+  aiThemes?: string[];
+  aiSuggestedAction?: string;
+  aiReflectionPrompt?: string;
 }
 
 export interface JournalEntryResponse {
@@ -52,6 +64,10 @@ export interface JournalEntryResponse {
   aiAnalysis?: string;
   favorite: boolean;
   wordCount: number;
+  aiEmotions?: { name: string; score: number }[];
+  aiThemes?: string[];
+  aiSuggestedAction?: string;
+  aiReflectionPrompt?: string;
 }
 
 export interface PaginatedJournalResponse {
