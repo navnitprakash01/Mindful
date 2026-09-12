@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { JournalEntry } from '../../types';
 import { stateService } from '../services/stateService';
 import { SignalExtractor } from '../engine/signalExtractor';
+import { screenForCrisis } from '../engine/interventionEngine/safety';
 
 interface JournalListQuery {
   page?: string;
@@ -116,6 +117,7 @@ export const journalController = {
 
       // Emit personal state signal
       try {
+        const crisisCheck = screenForCrisis((body.content || '') + ' ' + (body.title || ''));
         const signal = SignalExtractor.fromJournal({
           id: data.id,
           userId,
@@ -134,7 +136,20 @@ export const journalController = {
             reflectionPrompt: body.aiReflectionPrompt,
           },
         });
+        if (crisisCheck.isCrisisDetected) {
+          (signal.features as any).isCrisisDetected = true;
+          (signal.features as any).matchedTrigger = crisisCheck.matchedTrigger;
+        }
         await stateService.ingestSignal(signal);
+
+        const mapped = mapRowToEntry(data);
+        if (crisisCheck.isCrisisDetected) {
+          return res.status(201).json({
+            ...mapped,
+            isCrisisDetected: true,
+            crisisNotice: crisisCheck.helplineNotice,
+          });
+        }
       } catch (sigErr) {
         console.warn('Journal signal emission notice:', sigErr);
       }

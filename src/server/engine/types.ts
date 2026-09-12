@@ -109,6 +109,8 @@ export interface WellnessSignal {
     themes?: string[];
     sentimentSummary?: string;
     rawTokensCount?: number;
+    notes?: string;
+    content?: string;
   };
   reliabilityWeight: number;     // 0.0 - 1.0 (e.g., self-report = 1.0, AI inference = 0.75)
   expiresAt: string;             // ISO 8601 UTC
@@ -139,6 +141,13 @@ export interface WellnessDimension {
   baselineDeviation: number;     // Signed delta from user's neutral baseline (value - baseline)
   trend: 'improving' | 'stable' | 'declining';
   contributingSignalIds: string[];
+  consistencyScore?: number | null; // null if < 2 modalities active
+  divergenceDetected?: boolean;
+  modalityBreakdown?: Partial<Record<SignalModality, {
+    value: number;
+    confidence: number;
+    weight: number;
+  }>>;
 }
 
 export interface BaselineDimension {
@@ -189,6 +198,13 @@ export interface PersonalState {
   contextualTriggers: string[];  // Unified list of active contextual factors
   activeSignalsCount: number;
   decayHalfLifeHours: number;    // Standard: 12.0 hours
+
+  // Multimodal State Fusion (Phase 5)
+  isCrisisDetected?: boolean;
+  crisisNotice?: string;
+  matchedCrisisTrigger?: string;
+  clustersCount?: number;
+  consistencySummary?: Partial<Record<StateDimensionKey, number | null>>;
 }
 
 export type NeutralBaseline = Record<StateDimensionKey, number>;

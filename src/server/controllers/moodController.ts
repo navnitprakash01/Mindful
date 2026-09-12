@@ -7,6 +7,8 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { moodService } from '../services/moodService';
 
+import { screenForCrisis } from '../engine/interventionEngine/safety';
+
 export const moodController = {
   /**
    * POST /api/moods
@@ -31,6 +33,8 @@ export const moodController = {
         return;
       }
 
+      const crisisCheck = screenForCrisis(notes || '');
+
       const log = await moodService.createMoodLog(userId, {
         energyLevel,
         moodType,
@@ -38,6 +42,15 @@ export const moodController = {
         triggers: Array.isArray(triggers) ? triggers : [],
         physicalSensations: Array.isArray(physicalSensations) ? physicalSensations : [],
       });
+
+      if (crisisCheck.isCrisisDetected) {
+        res.status(201).json({
+          ...log,
+          isCrisisDetected: true,
+          crisisNotice: crisisCheck.helplineNotice,
+        });
+        return;
+      }
 
       res.status(201).json(log);
     } catch (error) {

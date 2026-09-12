@@ -19,6 +19,8 @@ import {
   STATE_DIMENSION_CONFIG,
 } from './types';
 
+import { MultimodalFusionEngine } from './fusion/fusionEngine';
+
 export const STATE_ENGINE_CONFIG = {
   HALF_LIFE_HOURS: 12.0,
   MAX_SIGNAL_AGE_HOURS: 48.0,
@@ -36,6 +38,7 @@ export class StateEngine {
   private halfLifeHours: number;
   private maxAgeHours: number;
   private defaultBaseline: NeutralBaseline;
+  private fusionEngine: MultimodalFusionEngine;
 
   constructor(options?: {
     halfLifeHours?: number;
@@ -45,6 +48,10 @@ export class StateEngine {
     this.halfLifeHours = options?.halfLifeHours ?? STATE_ENGINE_CONFIG.HALF_LIFE_HOURS;
     this.maxAgeHours = options?.maxAgeHours ?? STATE_ENGINE_CONFIG.MAX_SIGNAL_AGE_HOURS;
     this.defaultBaseline = options?.baseline ?? STATE_ENGINE_CONFIG.DEFAULT_BASELINE;
+    this.fusionEngine = new MultimodalFusionEngine({
+      halfLifeHours: this.halfLifeHours,
+      maxAgeHours: this.maxAgeHours,
+    });
   }
 
   /**
@@ -73,7 +80,7 @@ export class StateEngine {
   }
 
   /**
-   * Unify active signals into a coherent PersonalState estimate
+   * Unify active signals into a coherent PersonalState estimate via Multimodal Fusion
    */
   public computeState(
     userId: string,
@@ -81,18 +88,6 @@ export class StateEngine {
     referenceTime: Date = new Date(),
     personalBaseline?: PersonalBaseline | NeutralBaseline
   ): PersonalState {
-    const activeSignals: Array<{ signal: WellnessSignal; decayWeight: number }> = [];
-    const sourceSummary: Record<string, number> = {};
-
-    // 1. Filter and compute decay weight for each signal
-    for (const signal of signals) {
-      const decayWeight = this.computeDecayWeight(signal, referenceTime);
-      if (decayWeight > 0.01) {
-        activeSignals.push({ signal, decayWeight });
-        sourceSummary[signal.modality] = (sourceSummary[signal.modality] || 0) + 1;
-      }
-    }
-
     // Resolve baseline: user's personal baseline if present, else default
     const baseline: NeutralBaseline = personalBaseline
       ? 'dimensions' in personalBaseline
@@ -107,9 +102,21 @@ export class StateEngine {
         : personalBaseline
       : this.defaultBaseline;
 
-    const allEvidence: StateEvidenceItem[] = [];
+    // Run deterministic multimodal fusion
+    const fusionResult = this.fusionEngine.fuse(userId, signals, baseline, referenceTime);
 
-    // 2. Synthesize each of the 6 wellness dimensions
+    // 3. Aggregate active somatic sensations & contextual triggers (past 24h)
+    const somaticSet = new Set<string>();
+    const triggerSet = new Set<string>();
+
+    for (const signal of signals) {
+      const ageHours = this.getSignalAgeHours(signal.timestamp, referenceTime);
+      if (ageHours <= 24.0) {
+        signal.features.somaticSensations?.forEach((s) => somaticSet.add(s.trim()));
+        signal.features.triggers?.forEach((t) => triggerSet.add(t.trim()));
+      }
+    }
+
     const dimensionKeys: StateDimensionKey[] = [
       'mood',
       'stress',
@@ -120,39 +127,22 @@ export class StateEngine {
     ];
 
     const dimensions = {} as Record<StateDimensionKey, WellnessDimension>;
+    const consistencySummary: Partial<Record<StateDimensionKey, number | null>> = {};
 
     for (const dimKey of dimensionKeys) {
-      const meta = STATE_DIMENSION_CONFIG[dimKey];
-      const baselineVal = baseline[dimKey] ?? meta.neutralDefault;
-      const { dimension, evidence } = this.synthesizeDimension(
-        dimKey,
-        activeSignals,
-        baselineVal,
-        meta.higherIsPositive
-      );
-
-      dimensions[dimKey] = dimension;
-      allEvidence.push(...evidence);
+      const dimFusion = fusionResult.dimensions[dimKey];
+      dimensions[dimKey] = {
+        value: dimFusion.fusedValue,
+        confidence: dimFusion.finalConfidence,
+        baselineDeviation: dimFusion.baselineDeviation,
+        trend: dimFusion.trend,
+        contributingSignalIds: dimFusion.contributingSignalIds,
+        consistencyScore: dimFusion.consistency.consistencyScore,
+        divergenceDetected: dimFusion.consistency.divergenceDetected,
+        modalityBreakdown: dimFusion.modalityBreakdown,
+      };
+      consistencySummary[dimKey] = dimFusion.consistency.consistencyScore;
     }
-
-    // 3. Aggregate active somatic sensations & contextual triggers (past 24h)
-    const somaticSet = new Set<string>();
-    const triggerSet = new Set<string>();
-
-    for (const { signal } of activeSignals) {
-      const ageHours = this.getSignalAgeHours(signal.timestamp, referenceTime);
-      if (ageHours <= 24.0) {
-        signal.features.somaticSensations?.forEach((s) => somaticSet.add(s.trim()));
-        signal.features.triggers?.forEach((t) => triggerSet.add(t.trim()));
-      }
-    }
-
-    // 4. Compute overall state confidence (mean dimension confidence)
-    const totalDimConfidence = dimensionKeys.reduce(
-      (sum, k) => sum + dimensions[k].confidence,
-      0
-    );
-    const overallConfidence = Number((totalDimConfidence / dimensionKeys.length).toFixed(2));
 
     const nowIso = referenceTime.toISOString();
 
@@ -169,16 +159,23 @@ export class StateEngine {
       energy: dimensions.energy.value,
       focus: dimensions.focus.value,
       cognitiveLoad: dimensions.cognitiveLoad.value,
-      confidence: overallConfidence,
+      confidence: fusionResult.overallConfidence,
 
       dimensions,
-      evidence: allEvidence,
-      sourceSummary,
-      overallConfidence,
+      evidence: fusionResult.evidence,
+      sourceSummary: fusionResult.sourceSummary,
+      overallConfidence: fusionResult.overallConfidence,
       somaticMarkers: Array.from(somaticSet).filter(Boolean),
       contextualTriggers: Array.from(triggerSet).filter(Boolean),
-      activeSignalsCount: activeSignals.length,
+      activeSignalsCount: fusionResult.activeSignalsCount,
       decayHalfLifeHours: this.halfLifeHours,
+
+      // Multimodal State Fusion (Phase 5)
+      isCrisisDetected: fusionResult.isCrisisDetected,
+      crisisNotice: fusionResult.crisisNotice,
+      matchedCrisisTrigger: fusionResult.matchedCrisisTrigger,
+      clustersCount: fusionResult.clustersCount,
+      consistencySummary,
     };
   }
 

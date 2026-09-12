@@ -248,6 +248,7 @@ export class MoodSignalProvider implements SignalProvider<MoodLogInput> {
         somaticSensations: sensations,
         triggers,
         sentimentSummary: input.notes ? input.notes.slice(0, 120) : undefined,
+        ...(input.notes ? { notes: input.notes } : {}),
       },
       reliabilityWeight: 1.0, // Primary self-report anchor
       expiresAt,
@@ -349,6 +350,7 @@ export class JournalSignalProvider implements SignalProvider<JournalInput> {
         themes: ai?.themes || deterministic.detectedThemes,
         sentimentSummary: ai?.summary || input.content.slice(0, 120),
         rawTokensCount: wordCount,
+        content: input.content,
       },
       reliabilityWeight,
       expiresAt,
