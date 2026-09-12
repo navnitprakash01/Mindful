@@ -68,6 +68,22 @@ export interface InterventionSession {
   createdAt: string;
 }
 
+export interface RecommendationEvidence {
+  stateSnapshotId?: string;
+  stateDimensions: Array<{
+    dimension: StateDimensionKey;
+    value: number;
+    contribution: number;
+  }>;
+  patternKeys: string[];
+  sessionIds: string[];
+  factors: Array<{
+    factor: 'state_fit' | 'pattern_fit' | 'history_fit' | 'cooldown';
+    contribution: number;
+    explanation: string;
+  }>;
+}
+
 export interface InterventionRecommendation {
   intervention: InterventionDefinition;
   suitabilityScore: number; // 0.00 - 1.00
@@ -76,6 +92,7 @@ export interface InterventionRecommendation {
   isColdOrLowConfidence: boolean;
   alternativeInterventions?: InterventionDefinition[];
   safetyNotice?: string;
+  evidence?: RecommendationEvidence;
 }
 
 export interface DimensionEffectiveness {

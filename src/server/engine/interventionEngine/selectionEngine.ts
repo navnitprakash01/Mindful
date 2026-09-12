@@ -265,6 +265,19 @@ export function selectIntervention(context: SelectionContext): InterventionRecom
       isColdOrLowConfidence: true,
       alternativeInterventions: alts,
       safetyNotice: crisisCheck.isCrisisDetected ? crisisCheck.helplineNotice : undefined,
+      evidence: {
+        stateSnapshotId: currentState?.id,
+        stateDimensions: [],
+        patternKeys: recentPatterns.map((p) => p.patternKey),
+        sessionIds: sessionHistory.slice(0, 5).map((s) => s.id),
+        factors: [
+          {
+            factor: 'state_fit',
+            contribution: 0.5,
+            explanation: 'Gentle baseline recommendation during calibration',
+          },
+        ],
+      },
     };
   }
 
@@ -295,6 +308,10 @@ export function selectIntervention(context: SelectionContext): InterventionRecom
       intervention,
       score: Math.max(0.01, Math.min(0.99, totalScore)),
       reasons,
+      stateFit,
+      patternFit,
+      historyFit,
+      cooldownPenalty,
     };
   });
 
@@ -304,6 +321,43 @@ export function selectIntervention(context: SelectionContext): InterventionRecom
   const top = scored[0];
   const alternatives = scored.slice(1, 3).map((s) => s.intervention);
 
+  const evidence = {
+    stateSnapshotId: currentState.id,
+    stateDimensions: top.intervention.targetDimensions.map((d) => ({
+      dimension: d,
+      value: currentState[d] ?? 50,
+      contribution: Number((0.50 * top.stateFit.score).toFixed(2)),
+    })),
+    patternKeys: recentPatterns.map((p) => p.patternKey),
+    sessionIds: sessionHistory.slice(0, 5).map((s) => s.id),
+    factors: [
+      {
+        factor: 'state_fit' as const,
+        contribution: Number((0.50 * top.stateFit.score).toFixed(2)),
+        explanation: top.stateFit.reasons[0] || 'Current dimension alignment',
+      },
+      {
+        factor: 'pattern_fit' as const,
+        contribution: Number((0.25 * top.patternFit.score).toFixed(2)),
+        explanation: top.patternFit.reasons[0] || 'Longitudinal pattern alignment',
+      },
+      {
+        factor: 'history_fit' as const,
+        contribution: Number((0.25 * top.historyFit.score).toFixed(2)),
+        explanation: top.historyFit.reasons[0] || 'Past outcome usefulness',
+      },
+      ...(top.cooldownPenalty > 0
+        ? [
+            {
+              factor: 'cooldown' as const,
+              contribution: -Number(top.cooldownPenalty.toFixed(2)),
+              explanation: 'Recent session cooldown penalty',
+            },
+          ]
+        : []),
+    ],
+  };
+
   return {
     intervention: top.intervention,
     suitabilityScore: Number(top.score.toFixed(2)),
@@ -312,5 +366,6 @@ export function selectIntervention(context: SelectionContext): InterventionRecom
     isColdOrLowConfidence: false,
     alternativeInterventions: alternatives,
     safetyNotice: crisisCheck.isCrisisDetected ? crisisCheck.helplineNotice : undefined,
+    evidence,
   };
 }

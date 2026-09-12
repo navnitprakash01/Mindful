@@ -15,6 +15,7 @@ router.get('/current', stateController.getCurrentState);
 router.get('/history', stateController.getStateHistory);
 router.get('/baseline', stateController.getPersonalBaseline);
 router.get('/evidence', stateController.getStateEvidence);
+router.get('/evidence-graph', stateController.getEvidenceGraph);
 router.post('/recompute', stateController.recalculateState);
 router.post('/recalculate', stateController.recalculateState);
 router.post('/signal', stateController.ingestSignal);

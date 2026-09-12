@@ -80,6 +80,7 @@ export function detectCooccurrencePatterns(
             supportingCount: pair.obs.length,
             comparisonCount: triggerTotal - pair.obs.length,
             supportingTimestamps: timestamps,
+            supportingObservationIds: pair.obs.map((o) => o.id),
             metricKey: 'cooccurrence',
             supportingAvg: Math.round(cooccurrenceRatio * 100),
             triggerName: pair.trigger,

@@ -90,13 +90,23 @@ export const InterventionRecommendationCard: React.FC = () => {
         </p>
 
         {/* Evidence reasons */}
-        {reasons && reasons.length > 0 && (
+        {((reasons && reasons.length > 0) || (recommendation.evidence?.factors && recommendation.evidence.factors.length > 0)) && (
           <div className="p-3.5 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.04)] space-y-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-[rgba(232,234,246,0.40)] font-semibold block">
-              Observed State Indicators
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-[rgba(232,234,246,0.40)] font-semibold block">
+                Observed State Indicators
+              </span>
+              {recommendation.evidence?.patternKeys && recommendation.evidence.patternKeys.length > 0 && (
+                <span className="text-[10px] font-mono text-[#6ee7b7]">
+                  Aligned with {recommendation.evidence.patternKeys.length} pattern{recommendation.evidence.patternKeys.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
-              {reasons.map((reason, idx) => (
+              {(recommendation.evidence?.factors?.length
+                ? recommendation.evidence.factors.map((f) => f.explanation)
+                : reasons
+              ).map((reason, idx) => (
                 <span
                   key={idx}
                   className="px-2.5 py-1 rounded-xl text-xs bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] text-[rgba(232,234,246,0.80)]"

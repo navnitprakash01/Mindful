@@ -92,6 +92,7 @@ export function detectTemporalPatterns(
           supportingCount,
           comparisonCount: dayObs.length,
           supportingTimestamps: timestamps,
+          supportingObservationIds: eveningObs.map((o) => o.id),
           metricKey: 'energyLevel',
           supportingAvg: Math.round(eveningAvg * 10) / 10,
           comparisonAvg: Math.round(dayAvg * 10) / 10,

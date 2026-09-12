@@ -107,6 +107,7 @@ export function detectTriggerAssociations(
           supportingCount,
           comparisonCount: otherObs.length,
           supportingTimestamps: timestamps,
+          supportingObservationIds: matchingObs.map((o) => o.id),
           metricKey: 'energyLevel',
           supportingAvg: Math.round(triggerAvg * 10) / 10,
           comparisonAvg: Math.round(otherAvg * 10) / 10,

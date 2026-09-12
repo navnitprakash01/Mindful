@@ -191,6 +191,7 @@ export interface PatternEvidence {
   triggerName?: string;
   temporalContext?: string;
   sampleContexts: string[];
+  supportingObservationIds?: string[];
 }
 
 export interface PersonalPattern {
@@ -279,6 +280,24 @@ export interface InterventionSession {
   createdAt: string;
 }
 
+export interface RecommendationFactorContribution {
+  factor: 'state_fit' | 'pattern_fit' | 'history_fit' | 'cooldown';
+  contribution: number;
+  explanation: string;
+}
+
+export interface RecommendationEvidence {
+  stateSnapshotId?: string;
+  stateDimensions: Array<{
+    dimension: StateDimensionKey;
+    value: number;
+    contribution: number;
+  }>;
+  patternKeys: string[];
+  sessionIds: string[];
+  factors: RecommendationFactorContribution[];
+}
+
 export interface InterventionRecommendation {
   intervention: InterventionDefinition;
   suitabilityScore: number; // 0.00 - 1.00
@@ -287,6 +306,7 @@ export interface InterventionRecommendation {
   isColdOrLowConfidence: boolean;
   alternativeInterventions?: InterventionDefinition[];
   safetyNotice?: string;
+  evidence?: RecommendationEvidence;
 }
 
 export interface DimensionEffectiveness {

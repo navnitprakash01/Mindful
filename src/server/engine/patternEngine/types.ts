@@ -21,6 +21,7 @@ export interface PatternEvidence {
   supportingCount: number;
   comparisonCount: number;
   supportingTimestamps: string[];
+  supportingObservationIds?: string[]; // Phase 6: explicit observation provenance
   metricKey: string;
   supportingAvg: number;
   comparisonAvg?: number;

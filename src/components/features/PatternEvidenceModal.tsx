@@ -100,9 +100,16 @@ export const PatternEvidenceModal: React.FC<PatternEvidenceModalProps> = ({
         {/* Sample Context Dates */}
         {evidence.sampleContexts && evidence.sampleContexts.length > 0 && (
           <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[rgba(232,234,246,0.40)] block mb-2">
-              Recent Occurrences
-            </span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[rgba(232,234,246,0.40)]">
+                Recent Occurrences
+              </span>
+              {evidence.supportingObservationIds && evidence.supportingObservationIds.length > 0 && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[rgba(108,114,232,0.12)] border border-[rgba(108,114,232,0.25)] text-[#c0c4ea]">
+                  {evidence.supportingObservationIds.length} Linked Observation Traces
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {evidence.sampleContexts.map((dt, idx) => (
                 <div

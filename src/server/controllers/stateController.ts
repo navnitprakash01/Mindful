@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { stateService } from '../services/stateService';
+import { evidenceService } from '../engine/evidenceGraph';
 import { isValidUuid } from '../engine/providers';
 import {
   WellnessSignal,
@@ -223,6 +224,26 @@ export const stateController = {
     } catch (error) {
       console.error('Ingest signal error:', error);
       res.status(500).json({ error: 'Failed to ingest wellness signal' });
+    }
+  },
+
+  /**
+   * GET /api/state/evidence-graph
+   * Mindful 2.0 — Phase 6: Explainable AI / Evidence Graph
+   */
+  async getEvidenceGraph(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const evidenceGraphResponse = await evidenceService.getEvidenceGraph(userId);
+      res.json(evidenceGraphResponse);
+    } catch (error) {
+      console.error('Get evidence graph error:', error);
+      res.status(500).json({ error: 'Failed to construct evidence graph' });
     }
   },
 };

@@ -78,6 +78,7 @@ export function detectMoodFrequency(
           supportingCount: count,
           comparisonCount: total - count,
           supportingTimestamps: timestamps,
+          supportingObservationIds: matchingObs.map((o) => o.id),
           metricKey: 'moodType',
           supportingAvg: Math.round(ratio * 100),
           sampleContexts: dates,
