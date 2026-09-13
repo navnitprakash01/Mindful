@@ -37,6 +37,7 @@ const PATTERN_ICONS: Record<PatternType, React.ReactNode> = {
   mood_frequency: <Activity className="w-4 h-4 text-[#6ee7b7]" />,
   energy_trajectory: <TrendingUp className="w-4 h-4 text-[#38bdf8]" />,
   context_somatic_cooccurrence: <Compass className="w-4 h-4 text-[#fbbf24]" />,
+  habit_rhythm_correlation: <Sparkles className="w-4 h-4 text-[#a78bfa]" />,
 };
 
 export const ObservatoryPatterns: React.FC<ObservatoryPatternsProps> = ({

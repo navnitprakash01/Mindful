@@ -40,7 +40,18 @@ export interface AppContextType {
   recalculateState: () => Promise<void>;
   refreshPatterns: () => Promise<void>;
   habits: Habit[];
-  toggleHabitCompletion: (id: string, dateStr: string) => void;
+  toggleHabitCompletion: (id: string, dateStr?: string) => Promise<void> | void;
+  createHabit?: (input: {
+    title: string;
+    description?: string;
+    category?: Habit['category'];
+    targetFrequency?: number;
+    restDaysAllowed?: number;
+  }) => Promise<Habit | null>;
+  archiveHabit?: (id: string) => Promise<boolean>;
+  deleteHabit?: (id: string) => Promise<boolean>;
+  refreshHabits?: () => Promise<void>;
+  isHabitsLoading?: boolean;
   userProfile: UserProfile;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
   notifications: AppNotification[];

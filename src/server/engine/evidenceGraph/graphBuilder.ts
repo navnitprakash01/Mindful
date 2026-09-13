@@ -513,6 +513,11 @@ function formatSanitizedSignalSummary(signal: WellnessSignal): string {
     case 'session_cognitive': {
       return 'Deep work focus session behavioral telemetry.';
     }
+    case 'habit_action': {
+      const themes = signal.features.themes?.filter(Boolean);
+      const category = themes && themes.length > 0 ? ` (${themes.join(', ')})` : '';
+      return `Behavioral ritual completion logged${category}.`;
+    }
     case 'intervention_outcome': {
       return `Post-reset outcome reflection for ${signal.features.triggers?.[0] || 'intervention'}.`;
     }
@@ -537,6 +542,8 @@ function formatModalityLabel(modality: string): string {
       return 'Wearable Observation';
     case 'session_cognitive':
       return 'Cognitive Focus Session';
+    case 'habit_action':
+      return 'Behavioral Ritual';
     case 'intervention_outcome':
       return 'Intervention Outcome';
     default:

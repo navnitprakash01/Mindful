@@ -34,6 +34,7 @@ import {
 } from '../../../types';
 import { useIntervention } from '../../../context/InterventionContext';
 import { usePersonalState } from '../../../context/StateContext';
+import { useAuth } from '../../../context/AuthContext';
 
 interface InterventionPlayerModalProps {
   isOpen: boolean;
@@ -88,8 +89,12 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
   });
   const [usefulness, setUsefulness] = useState<number>(4);
   const [feedbackNotes, setFeedbackNotes] = useState<string>('');
+  const { getAccessToken } = useAuth();
   const [completedSession, setCompletedSession] = useState<InterventionSession | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAdopting, setIsAdopting] = useState(false);
+  const [isAdopted, setIsAdopted] = useState(false);
+  const [adoptError, setAdoptError] = useState<string | null>(null);
 
   // Reset when modal opens or intervention changes
   useEffect(() => {
@@ -99,6 +104,8 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       setActiveSession(null);
       setCompletedSession(null);
       setIsTimerRunning(false);
+      setIsAdopted(false);
+      setAdoptError(null);
       if (personalState) {
         setPostRatings({
           mood: personalState.mood,
@@ -187,6 +194,36 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAdoptAsRitual = async () => {
+    if (!activeIntervention) return;
+    setIsAdopting(true);
+    setAdoptError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch('/api/habits/adopt-intervention', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          interventionId: activeIntervention.id,
+          targetFrequency: 7,
+        }),
+      });
+      if (res.ok) {
+        setIsAdopted(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAdoptError(data.error || 'Failed to adopt ritual');
+      }
+    } catch (err: unknown) {
+      setAdoptError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setIsAdopting(false);
     }
   };
 
@@ -543,6 +580,54 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                 </div>
               </div>
             )}
+
+            {/* Adopt as Daily Ritual Recommendation */}
+            {(() => {
+              const hasFavorableDelta = completedSession.dimensionDeltas
+                ? Object.entries(completedSession.dimensionDeltas).some(([dim, rawDelta]) => {
+                    const delta = typeof rawDelta === 'number' ? rawDelta : Number(rawDelta || 0);
+                    const higherGood = HIGHER_IS_POSITIVE[dim as StateDimensionKey] ?? true;
+                    return higherGood ? delta > 0 : delta < 0;
+                  })
+                : false;
+              const canAdopt = usefulness >= 4 || hasFavorableDelta;
+              if (!canAdopt) return null;
+
+              return (
+                <div className="p-4 rounded-2xl bg-[rgba(192,196,234,0.06)] border border-[rgba(192,196,234,0.18)] space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h5 className="text-sm font-medium text-[rgba(232,234,246,0.95)]">
+                        Turn this practice into a behavioral rhythm?
+                      </h5>
+                      <p className="text-xs text-[rgba(232,234,246,0.60)]">
+                        Reinforce this reset by adding it to your daily rituals.
+                      </p>
+                    </div>
+                    <Button
+                      variant={isAdopted ? 'secondary' : 'outline'}
+                      size="sm"
+                      onClick={handleAdoptAsRitual}
+                      disabled={isAdopting || isAdopted}
+                      className={isAdopted ? 'text-[#6ee7b7] border-[#6ee7b7]/30' : ''}
+                    >
+                      {isAdopted ? (
+                        <span className="flex items-center gap-1.5 text-xs text-[#6ee7b7]">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Ritual Adopted
+                        </span>
+                      ) : isAdopting ? (
+                        'Adopting...'
+                      ) : (
+                        'Adopt as Daily Ritual'
+                      )}
+                    </Button>
+                  </div>
+                  {adoptError && (
+                    <p className="text-xs text-rose-400 mt-1">{adoptError}</p>
+                  )}
+                </div>
+              );
+            })()}
 
             <p className="text-xs text-center text-[rgba(232,234,246,0.50)] italic">
               "Every intentional pause refines your personal wellness intelligence."

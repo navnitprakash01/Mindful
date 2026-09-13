@@ -31,6 +31,7 @@ const PATTERN_ICONS: Record<PatternType, React.ReactNode> = {
   mood_frequency: <Activity className="w-4 h-4 text-[#6ee7b7]" />,
   energy_trajectory: <TrendingUp className="w-4 h-4 text-[#38bdf8]" />,
   context_somatic_cooccurrence: <Compass className="w-4 h-4 text-[#fbbf24]" />,
+  habit_rhythm_correlation: <Sparkles className="w-4 h-4 text-[#a78bfa]" />,
 };
 
 const PATTERN_TYPE_LABELS: Record<PatternType, string> = {
@@ -39,6 +40,7 @@ const PATTERN_TYPE_LABELS: Record<PatternType, string> = {
   mood_frequency: 'Emotional Frequency',
   energy_trajectory: 'Energy Trajectory',
   context_somatic_cooccurrence: 'Contextual Co-occurrence',
+  habit_rhythm_correlation: 'Habit & Rhythm Correlation',
 };
 
 export const PatternInsightsCard: React.FC = () => {

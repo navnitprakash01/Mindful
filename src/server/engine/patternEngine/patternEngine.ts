@@ -12,6 +12,7 @@ import { detectTriggerAssociations } from './detectors/triggerDetector';
 import { detectMoodFrequency } from './detectors/moodFrequencyDetector';
 import { detectEnergyTrajectory } from './detectors/energyTrajectoryDetector';
 import { detectCooccurrencePatterns } from './detectors/cooccurrenceDetector';
+import { detectHabitRhythms } from './detectors/habitRhythmDetector';
 
 export class PatternEngine {
   private thresholds: ThresholdConfig;
@@ -36,6 +37,7 @@ export class PatternEngine {
       ...detectTriggerAssociations(userId, observations, this.thresholds),
       ...detectTemporalPatterns(userId, observations, this.thresholds),
       ...detectCooccurrencePatterns(userId, observations, this.thresholds),
+      ...detectHabitRhythms(userId, observations, this.thresholds),
     ];
 
     // Deduplicate by patternKey, keeping the candidate with highest confidence

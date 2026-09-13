@@ -19,6 +19,7 @@ import memoryRoutes from "./src/server/routes/memoryRoutes";
 import proactiveRoutes from "./src/server/routes/proactiveRoutes";
 import wearableRoutes from "./src/server/routes/wearableRoutes";
 import cognitiveRoutes from "./src/server/routes/cognitiveRoutes";
+import habitRoutes from "./src/server/routes/habitRoutes";
 import { supabase } from "./src/server/lib/supabase";
 import { stateService } from "./src/server/services/stateService";
 import { SignalExtractor } from "./src/server/engine/signalExtractor";
@@ -117,6 +118,9 @@ app.use("/api/wearable", wearableRoutes);
 
 // Real-Time Cognitive Monitoring & Deep Work Focus Intelligence API Routes
 app.use("/api/cognitive", cognitiveRoutes);
+
+// Behavioral Rituals & Habit Action Intelligence API Routes
+app.use("/api/habits", habitRoutes);
 
 // Companion API Routes
 app.use("/api/companion", companionRoutes);

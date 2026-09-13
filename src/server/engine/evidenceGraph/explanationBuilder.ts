@@ -397,6 +397,8 @@ function formatModalityName(modality: string): string {
       return 'wearable';
     case 'session_cognitive':
       return 'focus session';
+    case 'habit_action':
+      return 'behavioral ritual';
     case 'intervention_outcome':
       return 'outcome';
     default:

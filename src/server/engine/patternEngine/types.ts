@@ -10,7 +10,8 @@ export type PatternType =
   | 'trigger_association'
   | 'mood_frequency'
   | 'energy_trajectory'
-  | 'context_somatic_cooccurrence';
+  | 'context_somatic_cooccurrence'
+  | 'habit_rhythm_correlation';
 
 export type PatternStrength = 'mild' | 'moderate' | 'strong';
 

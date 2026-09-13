@@ -17,7 +17,7 @@ const categoryConfig = {
 };
 
 export const HabitsView: React.FC = () => {
-  const { habits, toggleHabitCompletion, showToast } = useApp();
+  const { habits, toggleHabitCompletion, createHabit, showToast } = useApp();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -27,9 +27,17 @@ export const HabitsView: React.FC = () => {
   const totalCompletedToday = habits.filter((h) => h.completedDates.includes(todayStr)).length;
   const completionPercentage = habits.length ? Math.round((totalCompletedToday / habits.length) * 100) : 0;
 
-  const handleCreateHabit = (e: React.FormEvent) => {
+  const handleCreateHabit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
+    if (createHabit) {
+      await createHabit({
+        title: newTitle.trim(),
+        description: newDesc.trim() || undefined,
+        category: newCategory,
+        targetFrequency: 7,
+      });
+    }
     showToast(`"${newTitle}" added to daily rituals`);
     setIsAddModalOpen(false);
     setNewTitle('');
@@ -94,7 +102,9 @@ export const HabitsView: React.FC = () => {
             <div className="text-center bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.10)] rounded-2xl px-6 py-4">
               <Trophy className="w-5 h-5 text-[#fbbf24] mx-auto mb-1" />
               <span className="text-[10px] text-[rgba(192,196,234,0.45)] block">Best Streak</span>
-              <span className="text-xl font-bold font-mono text-white">14 Days</span>
+              <span className="text-xl font-bold font-mono text-white">
+                {habits.length > 0 ? Math.max(0, ...habits.map((h) => h.bestStreak ?? h.streak ?? 0)) : 0} Days
+              </span>
             </div>
             <div className="text-center">
               <span className="text-4xl font-bold font-mono" style={{
@@ -171,7 +181,7 @@ export const HabitsView: React.FC = () => {
                         {habit.category}
                       </Badge>
                       <span className="text-[10px] font-semibold text-[#fbbf24] flex items-center gap-1 font-mono">
-                        <Flame className="w-3 h-3" /> {habit.streak} day
+                        <Flame className="w-3 h-3" /> {habit.streak > 0 ? `${habit.streak} day rhythm` : 'Ready to begin'}
                       </span>
                     </div>
                     <h3 className="font-display-lg text-xl text-[rgba(232,234,246,0.85)]">{habit.title}</h3>

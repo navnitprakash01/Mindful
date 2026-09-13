@@ -52,7 +52,12 @@ export interface Habit {
   streak: number;
   targetFrequency: number; // e.g. 7 days a week
   completedDates: string[]; // ISO date strings (YYYY-MM-DD)
-  iconName: string;
+  iconName?: string;
+  bestStreak?: number;
+  status?: 'active' | 'paused' | 'archived';
+  restDaysAllowed?: number;
+  preferredTimeWindow?: string;
+  durationMinutes?: number;
 }
 
 export interface UserProfile {
@@ -174,7 +179,8 @@ export type PatternType =
   | 'trigger_association'
   | 'mood_frequency'
   | 'energy_trajectory'
-  | 'context_somatic_cooccurrence';
+  | 'context_somatic_cooccurrence'
+  | 'habit_rhythm_correlation';
 
 export type PatternStrength = 'mild' | 'moderate' | 'strong';
 

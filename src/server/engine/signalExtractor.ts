@@ -33,6 +33,11 @@ import {
   CognitiveSignalProvider,
   FocusSession,
 } from './cognitive';
+import {
+  HabitSignalProvider,
+  HabitDefinition,
+  HabitCompletionInput,
+} from './habits';
 
 export type {
   MoodLogInput,
@@ -52,6 +57,7 @@ const voiceProvider = new VoiceSignalProvider();
 const cameraProvider = new CameraSignalProvider();
 const wearableProvider = new WearableSignalProvider();
 const cognitiveProvider = new CognitiveSignalProvider();
+const habitProvider = new HabitSignalProvider();
 
 export class SignalExtractor {
   /**
@@ -111,5 +117,16 @@ export class SignalExtractor {
    */
   public static fromCognitiveSession(userId: string, session: FocusSession): WellnessSignal {
     return cognitiveProvider.extractSignal(userId, session);
+  }
+
+  /**
+   * Extract a WellnessSignal from a completed Behavioral Habit action
+   */
+  public static fromHabitAction(
+    userId: string,
+    habit: HabitDefinition,
+    completionInput?: HabitCompletionInput
+  ): WellnessSignal {
+    return habitProvider.extractSignal(userId, habit, completionInput);
   }
 }
