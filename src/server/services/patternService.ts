@@ -12,7 +12,7 @@ import { ObservationNormalizer } from '../engine/patternEngine/normalizer';
 import { PersonalPattern } from '../engine/patternEngine/types';
 import { moodService } from './moodService';
 import { stateService } from './stateService';
-import { GoogleGenAI } from '@google/genai';
+import { geminiClient } from './geminiClient';
 
 const TABLE_PATTERNS = 'personal_patterns';
 
@@ -35,19 +35,6 @@ async function withDbTimeout<T>(promise: PromiseLike<T>, timeoutMs = 1200): Prom
     return result;
   } finally {
     clearTimeout(timer!);
-  }
-}
-
-// Optional Gemini instance for narrative explanation enhancement
-let geminiAi: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY && process.env.NODE_ENV !== 'test') {
-  try {
-    geminiAi = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: { headers: { 'User-Agent': 'mindful-patterns' } },
-    });
-  } catch {
-    geminiAi = null;
   }
 }
 
@@ -130,23 +117,13 @@ export const patternService = {
     const discoveredPatterns = defaultPatternEngine.analyze(userId, mergedObservations);
 
     // 4. Optional Gemini enhancement for top patterns (non-blocking)
-    if (geminiAi && discoveredPatterns.length > 0 && process.env.NODE_ENV !== 'test') {
+    if (discoveredPatterns.length > 0 && process.env.NODE_ENV !== 'test') {
       try {
         const top = discoveredPatterns.slice(0, 2);
         for (const p of top) {
-          const prompt = `You are Mindful's empathetic AI assistant. Explain this validated wellness observation concisely in 1-2 calm, supportive sentences without claiming causation or diagnosing any condition.
-Pattern: "${p.title}"
-Details: "${p.description}"
-Evidence: ${JSON.stringify(p.evidence)}
-Do NOT use words like "causes", "because of", or "leads to". Speak strictly about observational co-occurrence.`;
-
-          const response = await geminiAi.models.generateContent({
-            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-            contents: prompt,
-          });
-
-          if (response?.text) {
-            p.aiExplanation = response.text.trim();
+          const explanation = await geminiClient.verbalizePattern(p, 3000);
+          if (explanation) {
+            p.aiExplanation = explanation;
           }
         }
       } catch (aiErr) {
