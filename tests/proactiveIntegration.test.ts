@@ -272,8 +272,8 @@ describe('Phase 8 Integration: Proactive Intelligence & Memory API', () => {
 
     it('logs response (dismissed) and verifies subsequent suppression under dismissal gate', async () => {
       const freshUser = randomUUID();
-      // 1. Enable proactivity
-      await proactiveService.updateSettings(freshUser, { enabled: true });
+      // 1. Enable proactivity and disable quiet hours for time-invariant test
+      await proactiveService.updateSettings(freshUser, { enabled: true, quietHoursStart: 0, quietHoursEnd: 0 });
 
       // 2. Record that a proactive decision was surfaced
       const surfacedEvent = await proactiveService.recordSurfacedDecision(freshUser, {
@@ -303,7 +303,7 @@ describe('Phase 8 Integration: Proactive Intelligence & Memory API', () => {
       assert.strictEqual(checkRes.getStatusCode(), 200);
       const checkDecision: ProactiveDecision = checkRes.getData();
       assert.strictEqual(checkDecision.shouldSurface, false);
-      assert.ok(['frequency_cap_reached', 'cooldown_active', 'recent_dismissal'].includes(checkDecision.suppressionReason!));
+      assert.ok(['frequency_cap_reached', 'cooldown_active', 'recent_dismissal', 'quiet_hours_active'].includes(checkDecision.suppressionReason!));
     });
   });
 

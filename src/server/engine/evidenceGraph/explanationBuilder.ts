@@ -393,6 +393,8 @@ function formatModalityName(modality: string): string {
       return 'companion';
     case 'camera_behavior':
       return 'camera';
+    case 'wearable_metrics':
+      return 'wearable';
     case 'intervention_outcome':
       return 'outcome';
     default:

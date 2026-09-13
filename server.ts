@@ -17,6 +17,7 @@ import voiceRoutes from "./src/server/routes/voiceRoutes";
 import cameraRoutes from "./src/server/routes/cameraRoutes";
 import memoryRoutes from "./src/server/routes/memoryRoutes";
 import proactiveRoutes from "./src/server/routes/proactiveRoutes";
+import wearableRoutes from "./src/server/routes/wearableRoutes";
 import { supabase } from "./src/server/lib/supabase";
 import { stateService } from "./src/server/services/stateService";
 import { SignalExtractor } from "./src/server/engine/signalExtractor";
@@ -109,6 +110,9 @@ app.use("/api/memory", memoryRoutes);
 
 // Proactive Intelligence API Routes
 app.use("/api/proactive", proactiveRoutes);
+
+// Wearable & Behavioral Intelligence API Routes
+app.use("/api/wearable", wearableRoutes);
 
 // Companion API Routes
 app.use("/api/companion", companionRoutes);

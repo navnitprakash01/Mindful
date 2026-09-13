@@ -8,6 +8,7 @@ import { Badge } from '../ui/Badge';
 import { Volume2, VolumeX, Download, ShieldCheck, Sparkles, User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { MemoryVaultSettings } from './settings/MemoryVaultSettings';
+import { WearableSettingsCard } from './settings/WearableSettingsCard';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -201,6 +202,9 @@ export const SettingsView: React.FC = () => {
 
       {/* Memory & Proactivity (Phase 8) */}
       <MemoryVaultSettings />
+
+      {/* Wearable & Behavioral Integration (Phase 9) */}
+      <WearableSettingsCard />
 
       {/* Data Export */}
       <motion.div

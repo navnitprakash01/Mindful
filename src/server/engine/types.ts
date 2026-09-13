@@ -9,6 +9,7 @@ export type SignalModality =
   | 'companion_session'
   | 'mood_checkin'
   | 'camera_behavior'
+  | 'wearable_metrics'
   | 'habit_action'
   | 'future_behavior'
   | 'future_wearable'

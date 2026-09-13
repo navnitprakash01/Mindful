@@ -24,6 +24,11 @@ import {
   CameraSignalProvider,
   CameraObservationInput,
 } from './cameraSignalProvider';
+import {
+  WearableSignalProvider,
+  WearableObservation,
+  WearableBaseline,
+} from './wearable';
 
 export type {
   MoodLogInput,
@@ -32,6 +37,8 @@ export type {
   VoiceTranscriptInput,
   VoiceObservationInput,
   CameraObservationInput,
+  WearableObservation,
+  WearableBaseline,
 };
 
 const moodProvider = new MoodSignalProvider();
@@ -39,6 +46,7 @@ const journalProvider = new JournalSignalProvider();
 const companionProvider = new CompanionSignalProvider();
 const voiceProvider = new VoiceSignalProvider();
 const cameraProvider = new CameraSignalProvider();
+const wearableProvider = new WearableSignalProvider();
 
 export class SignalExtractor {
   /**
@@ -78,6 +86,18 @@ export class SignalExtractor {
    */
   public static fromCameraObservation(input: CameraObservationInput): WellnessSignal {
     const signals = cameraProvider.extractSignals(input);
+    return signals[0];
+  }
+
+  /**
+   * Extract a WellnessSignal from a validated Wearable Observation
+   */
+  public static fromWearableObservation(
+    userId: string,
+    observation: WearableObservation,
+    baseline?: WearableBaseline | null
+  ): WellnessSignal {
+    const signals = wearableProvider.extractSignals(userId, observation, baseline);
     return signals[0];
   }
 }

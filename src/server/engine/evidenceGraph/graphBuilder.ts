@@ -507,6 +507,9 @@ function formatSanitizedSignalSummary(signal: WellnessSignal): string {
     case 'camera_behavior': {
       return 'Camera behavioral observation (privacy-preserved local metrics).';
     }
+    case 'wearable_metrics': {
+      return 'Wearable physiological observation (autonomic and restfulness metrics).';
+    }
     case 'intervention_outcome': {
       return `Post-reset outcome reflection for ${signal.features.triggers?.[0] || 'intervention'}.`;
     }
@@ -527,6 +530,8 @@ function formatModalityLabel(modality: string): string {
       return 'Companion Dialogue';
     case 'camera_behavior':
       return 'Camera Observation';
+    case 'wearable_metrics':
+      return 'Wearable Observation';
     case 'intervention_outcome':
       return 'Intervention Outcome';
     default:
