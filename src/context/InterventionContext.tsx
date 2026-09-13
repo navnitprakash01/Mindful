@@ -22,6 +22,13 @@ export interface CompleteSessionPayload {
   perceivedUsefulness?: number;
   userFeedback?: string;
   durationSeconds?: number;
+  biofeedbackSummary?: {
+    biofeedbackAssisted?: boolean;
+    somaticStillnessScore?: number;
+    trackingQuality?: number;
+    pacingCycleSeconds?: number;
+    samplesCount?: number;
+  };
 }
 
 export interface InterventionContextType {

@@ -412,7 +412,16 @@ export class GraphBuilder {
       if (session.status === 'completed' && session.dimensionDeltas) {
         const outNodeId = `node-out-${session.id}`;
         const deltaSummaries = Object.entries(session.dimensionDeltas)
-          .map(([dim, val]) => `${dim}: ${val > 0 ? '+' : ''}${val}`)
+          .map(([dim, val]) => {
+            if (typeof val === 'number') {
+              return `${dim}: ${val > 0 ? '+' : ''}${val}`;
+            }
+            if (dim === 'biofeedback' && typeof val === 'object' && val !== null) {
+              return (val as any).biofeedbackAssisted ? 'biofeedback: camera-assisted' : 'biofeedback: standard';
+            }
+            return null;
+          })
+          .filter(Boolean)
           .join(', ');
 
         nodes[outNodeId] = {
@@ -519,7 +528,8 @@ function formatSanitizedSignalSummary(signal: WellnessSignal): string {
       return `Behavioral ritual completion logged${category}.`;
     }
     case 'intervention_outcome': {
-      return `Post-reset outcome reflection for ${signal.features.triggers?.[0] || 'intervention'}.`;
+      const assisted = (signal.features as any)?.biofeedbackAssisted ? ' with camera-assisted somatic pacing' : '';
+      return `Post-reset outcome reflection for ${signal.features.triggers?.[0] || 'intervention'}${assisted}.`;
     }
     default:
       return `${signal.modality.replace('_', ' ')} observation.`;

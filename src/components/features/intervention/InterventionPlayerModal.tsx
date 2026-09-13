@@ -24,6 +24,7 @@ import {
   ArrowRight,
   TrendingDown,
   TrendingUp,
+  Video,
 } from 'lucide-react';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
@@ -35,6 +36,9 @@ import {
 import { useIntervention } from '../../../context/InterventionContext';
 import { usePersonalState } from '../../../context/StateContext';
 import { useAuth } from '../../../context/AuthContext';
+import { useBiofeedbackSession } from '../../../hooks/useBiofeedbackSession';
+import { SomaticPacerVisual } from './SomaticPacerVisual';
+import { isStepPacingCompatible } from '../../../types/biofeedback';
 
 interface InterventionPlayerModalProps {
   isOpen: boolean;
@@ -95,6 +99,17 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
   const [isAdopting, setIsAdopting] = useState(false);
   const [isAdopted, setIsAdopted] = useState(false);
   const [adoptError, setAdoptError] = useState<string | null>(null);
+  const [biofeedbackOptIn, setBiofeedbackOptIn] = useState<boolean>(false);
+
+  // Somatic Biofeedback Session Hook
+  const biofeedback = useBiofeedbackSession({
+    baseCycleSeconds: 8.0,
+    inhaleSeconds: 4.0,
+    holdInSeconds: activeIntervention?.id === 'breathing-reset' ? 4.0 : 0.0,
+    exhaleSeconds: activeIntervention?.id === 'sleep-winddown' ? 7.0 : 4.0,
+    holdOutSeconds: activeIntervention?.id === 'breathing-reset' ? 4.0 : 0.0,
+    enabled: biofeedbackOptIn,
+  });
 
   // Reset when modal opens or intervention changes
   useEffect(() => {
@@ -106,6 +121,8 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       setIsTimerRunning(false);
       setIsAdopted(false);
       setAdoptError(null);
+      setBiofeedbackOptIn(false);
+      biofeedback.stopBiofeedback();
       if (personalState) {
         setPostRatings({
           mood: personalState.mood,
@@ -116,6 +133,8 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
           cognitiveLoad: personalState.cognitiveLoad,
         });
       }
+    } else {
+      biofeedback.stopBiofeedback();
     }
   }, [isOpen, activeIntervention?.id, personalState]);
 
@@ -158,6 +177,11 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       setActiveSession(session);
       setStage('active');
       setCurrentStepIndex(0);
+
+      // Start client-side biofeedback if opted in
+      if (biofeedbackOptIn) {
+        biofeedback.startBiofeedback().catch(() => {});
+      }
     } finally {
       setIsSaving(false);
     }
@@ -168,6 +192,7 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       setCurrentStepIndex((prev) => prev + 1);
     } else {
       setStage('reflection');
+      biofeedback.stopBiofeedback();
     }
   };
 
@@ -186,6 +211,7 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
         perceivedUsefulness: usefulness,
         userFeedback: feedbackNotes.trim() || undefined,
         durationSeconds: activeIntervention.durationMinutes * 60,
+        biofeedbackSummary: biofeedback.summary.biofeedbackAssisted ? biofeedback.summary : undefined,
       });
 
       if (finished) {
@@ -317,6 +343,28 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
               </div>
             </div>
 
+            {/* Optional Somatic Biofeedback Toggle */}
+            <div className="p-3.5 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)] flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[rgba(232,234,246,0.90)]">
+                  <Video className="w-3.5 h-3.5 text-[#818cf8]" />
+                  Enable Somatic Biofeedback (Optional)
+                </div>
+                <p className="text-[11px] text-[rgba(232,234,246,0.50)] leading-relaxed">
+                  Uses local video to estimate movement stability during the session. No video or images are recorded or transmitted.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={biofeedbackOptIn}
+                  onChange={(e) => setBiofeedbackOptIn(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-[rgba(255,255,255,0.15)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#818cf8]"></div>
+              </label>
+            </div>
+
             {/* Safety notice */}
             <div className="flex items-start gap-2 p-3 rounded-xl bg-[rgba(251,191,36,0.06)] border border-[rgba(251,191,36,0.15)] text-xs text-[rgba(251,191,36,0.80)]">
               <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
@@ -344,6 +392,9 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
             exit={{ opacity: 0, scale: 0.98 }}
             className="space-y-6 text-center py-4"
           >
+            {/* Off-screen hidden video for client-side processing */}
+            <video ref={biofeedback.videoRef as any} style={{ display: 'none' }} playsInline muted />
+
             {/* Step header */}
             <div className="flex items-center justify-between text-xs text-[rgba(232,234,246,0.40)]">
               <span>{activeIntervention.title}</span>
@@ -352,28 +403,39 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
               </span>
             </div>
 
-            {/* Circular Timer Visual */}
-            <div className="relative flex items-center justify-center my-6">
-              <div className="w-44 h-44 rounded-full border border-[rgba(192,196,234,0.15)] flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,rgba(192,196,234,0.08)_0%,transparent_70%)] relative">
-                <div className="text-3xl font-display-lg font-light text-[rgba(232,234,246,0.95)]">
-                  {formatTime(secondsRemaining)}
+            {/* Somatic Pacer Visual or Standard Circular Timer */}
+            {isStepPacingCompatible(currentStep.title, currentStep.instruction, activeIntervention.category) ? (
+              <SomaticPacerVisual
+                pacingState={biofeedback.pacingState}
+                status={biofeedback.status}
+                metrics={biofeedback.metrics}
+                secondsRemaining={secondsRemaining}
+                onDisableBiofeedback={biofeedback.stopBiofeedback}
+                formatTime={formatTime}
+              />
+            ) : (
+              <div className="relative flex items-center justify-center my-6">
+                <div className="w-44 h-44 rounded-full border border-[rgba(192,196,234,0.15)] flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,rgba(192,196,234,0.08)_0%,transparent_70%)] relative">
+                  <div className="text-3xl font-display-lg font-light text-[rgba(232,234,246,0.95)]">
+                    {formatTime(secondsRemaining)}
+                  </div>
+                  <button
+                    onClick={() => setIsTimerRunning((prev) => !prev)}
+                    className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.12)] text-[rgba(232,234,246,0.70)] transition-all"
+                  >
+                    {isTimerRunning ? (
+                      <>
+                        <Pause className="w-3 h-3" /> Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3 h-3" /> Resume
+                      </>
+                    )}
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsTimerRunning((prev) => !prev)}
-                  className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.12)] text-[rgba(232,234,246,0.70)] transition-all"
-                >
-                  {isTimerRunning ? (
-                    <>
-                      <Pause className="w-3 h-3" /> Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3 h-3" /> Resume
-                    </>
-                  )}
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Step Instruction */}
             <div className="space-y-3 px-4">

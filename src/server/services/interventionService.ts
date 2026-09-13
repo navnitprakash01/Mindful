@@ -168,6 +168,13 @@ export const interventionService = {
       perceivedUsefulness?: number;
       userFeedback?: string;
       durationSeconds?: number;
+      biofeedbackSummary?: {
+        biofeedbackAssisted?: boolean;
+        somaticStillnessScore?: number;
+        trackingQuality?: number;
+        pacingCycleSeconds?: number;
+        samplesCount?: number;
+      };
     }
   ): Promise<InterventionSession> {
     if (!isValidUuid(userId)) {
@@ -239,6 +246,9 @@ export const interventionService = {
 
     // Compute mathematical deltas: post - pre
     const dimensionDeltas = computeSessionDeltas(session.preStateSnapshot, postStateSnapshot);
+    if (payload.biofeedbackSummary) {
+      (dimensionDeltas as any).biofeedback = payload.biofeedbackSummary;
+    }
     const completedAt = new Date().toISOString();
 
     const updatedSession: InterventionSession = {
@@ -302,8 +312,12 @@ export const interventionService = {
         },
         features: {
           triggers: [session.interventionId],
-          sentimentSummary: `Completed ${session.interventionId} intervention`,
-        },
+          sentimentSummary: `Completed ${session.interventionId} intervention${
+            payload.biofeedbackSummary?.biofeedbackAssisted ? ' with somatic pacing' : ''
+          }`,
+          biofeedbackAssisted: payload.biofeedbackSummary?.biofeedbackAssisted ?? false,
+          somaticStillnessScore: payload.biofeedbackSummary?.somaticStillnessScore,
+        } as any,
         reliabilityWeight: 0.90, // High reliability: post-session reflective report
         expiresAt: new Date(Date.now() + 12 * 3600 * 1000).toISOString(),
       };

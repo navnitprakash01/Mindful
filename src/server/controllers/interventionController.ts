@@ -93,7 +93,7 @@ export const interventionController = {
         return res.status(400).json({ error: 'INVALID_SESSION_ID: Must be a valid UUID' });
       }
 
-      const { postStateSnapshot, perceivedUsefulness, userFeedback, durationSeconds } = req.body;
+      const { postStateSnapshot, perceivedUsefulness, userFeedback, durationSeconds, biofeedbackSummary } = req.body;
 
       if (perceivedUsefulness !== undefined) {
         if (
@@ -129,11 +129,84 @@ export const interventionController = {
         }
       }
 
+      let sanitizedBiofeedback: {
+        biofeedbackAssisted?: boolean;
+        somaticStillnessScore?: number;
+        trackingQuality?: number;
+        pacingCycleSeconds?: number;
+        samplesCount?: number;
+      } | undefined = undefined;
+
+      if (biofeedbackSummary !== undefined) {
+        if (typeof biofeedbackSummary !== 'object' || biofeedbackSummary === null || Array.isArray(biofeedbackSummary)) {
+          return res.status(400).json({ error: 'biofeedbackSummary must be an object' });
+        }
+
+        const allowedKeys = new Set(['biofeedbackAssisted', 'somaticStillnessScore', 'trackingQuality', 'pacingCycleSeconds', 'samplesCount']);
+        const extraKeys = Object.keys(biofeedbackSummary).filter((k) => !allowedKeys.has(k));
+        if (extraKeys.length > 0) {
+          return res.status(400).json({ error: `INVALID_BIOFEEDBACK_SUMMARY: Unknown keys not allowed: ${extraKeys.join(', ')}` });
+        }
+
+        if (biofeedbackSummary.biofeedbackAssisted !== undefined && typeof biofeedbackSummary.biofeedbackAssisted !== 'boolean') {
+          return res.status(400).json({ error: 'biofeedbackAssisted must be a boolean' });
+        }
+        if (biofeedbackSummary.somaticStillnessScore !== undefined) {
+          if (
+            typeof biofeedbackSummary.somaticStillnessScore !== 'number' ||
+            !Number.isFinite(biofeedbackSummary.somaticStillnessScore) ||
+            biofeedbackSummary.somaticStillnessScore < 0 ||
+            biofeedbackSummary.somaticStillnessScore > 100
+          ) {
+            return res.status(400).json({ error: 'somaticStillnessScore must be a number between 0 and 100' });
+          }
+        }
+        if (biofeedbackSummary.trackingQuality !== undefined) {
+          if (
+            typeof biofeedbackSummary.trackingQuality !== 'number' ||
+            !Number.isFinite(biofeedbackSummary.trackingQuality) ||
+            biofeedbackSummary.trackingQuality < 0 ||
+            biofeedbackSummary.trackingQuality > 1
+          ) {
+            return res.status(400).json({ error: 'trackingQuality must be a number between 0 and 1' });
+          }
+        }
+        if (biofeedbackSummary.pacingCycleSeconds !== undefined) {
+          if (
+            typeof biofeedbackSummary.pacingCycleSeconds !== 'number' ||
+            !Number.isFinite(biofeedbackSummary.pacingCycleSeconds) ||
+            biofeedbackSummary.pacingCycleSeconds < 7.0 ||
+            biofeedbackSummary.pacingCycleSeconds > 12.0
+          ) {
+            return res.status(400).json({ error: 'pacingCycleSeconds must be a number between 7.0 and 12.0' });
+          }
+        }
+        if (biofeedbackSummary.samplesCount !== undefined) {
+          if (
+            typeof biofeedbackSummary.samplesCount !== 'number' ||
+            !Number.isInteger(biofeedbackSummary.samplesCount) ||
+            biofeedbackSummary.samplesCount < 0 ||
+            biofeedbackSummary.samplesCount > 100000
+          ) {
+            return res.status(400).json({ error: 'samplesCount must be an integer between 0 and 100000' });
+          }
+        }
+
+        sanitizedBiofeedback = {
+          biofeedbackAssisted: biofeedbackSummary.biofeedbackAssisted,
+          somaticStillnessScore: biofeedbackSummary.somaticStillnessScore,
+          trackingQuality: biofeedbackSummary.trackingQuality,
+          pacingCycleSeconds: biofeedbackSummary.pacingCycleSeconds,
+          samplesCount: biofeedbackSummary.samplesCount,
+        };
+      }
+
       const session = await interventionService.completeSession(userId, sessionId, {
         postStateSnapshot,
         perceivedUsefulness,
         userFeedback,
         durationSeconds,
+        biofeedbackSummary: sanitizedBiofeedback,
       });
 
       return res.json({ session });
