@@ -22,6 +22,8 @@ const ALLOWED_MODALITIES: SignalModality[] = [
   'companion_session',
   'mood_checkin',
   'camera_behavior',
+  'wearable_metrics',
+  'session_cognitive',
   'habit_action',
 ];
 

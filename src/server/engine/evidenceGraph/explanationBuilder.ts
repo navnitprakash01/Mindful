@@ -395,6 +395,8 @@ function formatModalityName(modality: string): string {
       return 'camera';
     case 'wearable_metrics':
       return 'wearable';
+    case 'session_cognitive':
+      return 'focus session';
     case 'intervention_outcome':
       return 'outcome';
     default:

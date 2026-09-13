@@ -510,6 +510,9 @@ function formatSanitizedSignalSummary(signal: WellnessSignal): string {
     case 'wearable_metrics': {
       return 'Wearable physiological observation (autonomic and restfulness metrics).';
     }
+    case 'session_cognitive': {
+      return 'Deep work focus session behavioral telemetry.';
+    }
     case 'intervention_outcome': {
       return `Post-reset outcome reflection for ${signal.features.triggers?.[0] || 'intervention'}.`;
     }
@@ -532,6 +535,8 @@ function formatModalityLabel(modality: string): string {
       return 'Camera Observation';
     case 'wearable_metrics':
       return 'Wearable Observation';
+    case 'session_cognitive':
+      return 'Cognitive Focus Session';
     case 'intervention_outcome':
       return 'Intervention Outcome';
     default:

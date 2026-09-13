@@ -248,6 +248,10 @@ function formatModalityLabel(modality: SignalModality): string {
       return 'companion dialogue';
     case 'camera_behavior':
       return 'camera behavioral analysis';
+    case 'wearable_metrics':
+      return 'wearable physiological observation';
+    case 'session_cognitive':
+      return 'cognitive focus monitoring';
     case 'intervention_outcome':
       return 'intervention response';
     default:

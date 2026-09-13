@@ -29,6 +29,10 @@ import {
   WearableObservation,
   WearableBaseline,
 } from './wearable';
+import {
+  CognitiveSignalProvider,
+  FocusSession,
+} from './cognitive';
 
 export type {
   MoodLogInput,
@@ -47,6 +51,7 @@ const companionProvider = new CompanionSignalProvider();
 const voiceProvider = new VoiceSignalProvider();
 const cameraProvider = new CameraSignalProvider();
 const wearableProvider = new WearableSignalProvider();
+const cognitiveProvider = new CognitiveSignalProvider();
 
 export class SignalExtractor {
   /**
@@ -99,5 +104,12 @@ export class SignalExtractor {
   ): WellnessSignal {
     const signals = wearableProvider.extractSignals(userId, observation, baseline);
     return signals[0];
+  }
+
+  /**
+   * Extract a WellnessSignal from a completed Cognitive Focus Session
+   */
+  public static fromCognitiveSession(userId: string, session: FocusSession): WellnessSignal {
+    return cognitiveProvider.extractSignal(userId, session);
   }
 }

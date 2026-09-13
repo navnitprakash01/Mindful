@@ -22,6 +22,7 @@ import { MoodCheckInModal } from './MoodCheckInModal';
 import { PatternInsightsCard } from './PatternInsightsCard';
 import { InterventionRecommendationCard } from './intervention/InterventionRecommendationCard';
 import { ProactiveCheckInCard } from './proactive/ProactiveCheckInCard';
+import { FocusSessionWidget } from './focus/FocusSessionWidget';
 import {
   staggerContainer,
   staggerChild,
@@ -481,6 +482,16 @@ export const ZenDashboard: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <InterventionRecommendationCard />
+        </motion.div>
+
+        {/* ── PHASE 10: REAL-TIME COGNITIVE MONITORING & DEEP WORK FOCUS ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
+          className="mb-8"
+        >
+          <FocusSessionWidget />
         </motion.div>
 
         {/* ── BENTO GRID ── */}

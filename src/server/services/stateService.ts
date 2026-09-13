@@ -13,6 +13,7 @@ import { defaultBaselineEngine } from '../engine/baselineEngine';
 import { isValidUuid } from '../engine/providers';
 import {
   WellnessSignal,
+  SignalModality,
   PersonalState,
   PersonalBaseline,
   StateEvidenceItem,
@@ -306,5 +307,36 @@ export const stateService = {
 
     // Return empty history if none recorded (prevents mutual recursion with getCurrentState)
     return [];
+  },
+
+  /**
+   * Purges signals for a user, optionally scoped to a specific modality.
+   */
+  async purgeSignals(userId: string, modality?: SignalModality): Promise<number> {
+    const userSignals = inMemorySignals.get(userId) || [];
+    let purgedCount = 0;
+    if (modality) {
+      const remaining = userSignals.filter((s) => s.modality !== modality);
+      purgedCount = userSignals.length - remaining.length;
+      inMemorySignals.set(userId, remaining);
+    } else {
+      purgedCount = userSignals.length;
+      inMemorySignals.delete(userId);
+    }
+
+    try {
+      let query = supabase.from(TABLE_SIGNALS).delete().eq('user_id', userId);
+      if (modality) {
+        query = query.eq('modality', modality);
+      }
+      const { data } = await withDbTimeout(query.select('id'));
+      if (data && data.length > 0) {
+        purgedCount = Math.max(purgedCount, data.length);
+      }
+    } catch {
+      // In-memory fallback
+    }
+
+    return purgedCount;
   },
 };
