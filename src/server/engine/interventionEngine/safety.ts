@@ -11,7 +11,7 @@ import { CrisisScreeningResult } from './types';
 
 // Deterministic regex patterns for acute distress, self-harm, or suicidal ideation
 const CRISIS_PATTERNS: Array<{ regex: RegExp; label: string }> = [
-  { regex: /suicid|kill myself|want to die|end my life|end it all|better off dead/i, label: 'suicidal_ideation' },
+  { regex: /suicid|kill myself|want to die|end(ing)? my life|end it all|better off dead/i, label: 'suicidal_ideation' },
   { regex: /self-harm|self harm|cutting myself|hurt myself|burn myself|overdose/i, label: 'self_harm' },
   { regex: /no reason to live|don't want to live|give up on living|can't go on anymore/i, label: 'severe_hopelessness' },
   { regex: /hopelessness|emergency|crisis|danger to myself/i, label: 'acute_crisis' }
