@@ -19,7 +19,9 @@ export type NodeType =
   | 'learning_summary'
   | 'memory_item'
   | 'proactive_decision'
-  | 'crisis';
+  | 'crisis'
+  | 'forecast_horizon'
+  | 'weekly_digest';
 
 export type EdgeType =
   | 'extracted_from'
@@ -30,7 +32,9 @@ export type EdgeType =
   | 'executed_as'
   | 'resulted_in'
   | 'informs'
-  | 'overrides';
+  | 'overrides'
+  | 'projects'
+  | 'summarizes';
 
 export interface GraphNode {
   id: string;

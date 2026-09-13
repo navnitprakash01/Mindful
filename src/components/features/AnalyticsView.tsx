@@ -32,6 +32,8 @@ import { InterventionPlayerModal } from './intervention/InterventionPlayerModal'
 import { useIntervention } from '../../context/InterventionContext';
 import { Badge } from '../ui/Badge';
 import { Calendar, RotateCw } from 'lucide-react';
+import { useForecast } from '../../hooks/useForecast';
+import { ForecastTrajectoryCard, WeeklyDigestCard } from './forecast';
 
 export const AnalyticsView: React.FC = () => {
   const {
@@ -59,6 +61,7 @@ export const AnalyticsView: React.FC = () => {
   const deepDiveRef = useRef<HTMLDivElement | null>(null);
 
   const { isPlayerOpen, closePlayer, playerIntervention } = useIntervention();
+  const { forecast, digest, isLoading: isForecastLoading } = useForecast();
 
   // Derived 7-day slots from actual mood logs (strict zero-fabrication)
   const sevenDaySlots = useMemo(() => {
@@ -188,6 +191,19 @@ export const AnalyticsView: React.FC = () => {
             onExploreDetails={handleExploreDetails}
           />
         </motion.div>
+
+        {/* ── 4.5. LONGITUDINAL WELLNESS INTELLIGENCE (Phase 13) ── */}
+        {forecast && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="space-y-6"
+          >
+            <ForecastTrajectoryCard forecast={forecast} isLoading={isForecastLoading} />
+            {digest && <WeeklyDigestCard digest={digest} />}
+          </motion.div>
+        )}
 
         {/* ── 5. PROGRESSIVE DISCLOSURE: Explore your inner data → ── */}
         <div ref={deepDiveRef}>

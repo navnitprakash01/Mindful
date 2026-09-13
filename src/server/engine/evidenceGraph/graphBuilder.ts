@@ -46,6 +46,8 @@ export interface GraphBuilderContext {
   activeMemories?: any[];
   proactiveDecision?: any;
   referenceTime?: Date;
+  forecastResult?: any;
+  weeklyDigest?: any;
 }
 
 export class GraphBuilder {
@@ -471,7 +473,63 @@ export class GraphBuilder {
       }
     }
 
-    // 8. Decompose Uncertainty
+    // 8. Forecast Provenance (Phase 13)
+    const stateNodeId = currentState ? `state_${currentState.id}` : null;
+    if (context.forecastResult?.horizons) {
+      for (const [horizon, hData] of Object.entries(context.forecastResult.horizons) as [string, any][]) {
+        const fNodeId = `forecast_${horizon}`;
+        nodes[fNodeId] = {
+          id: fNodeId,
+          type: 'forecast_horizon',
+          label: `${horizon.toUpperCase()} Horizon Forecast`,
+          summary: hData.summaryRationale || `Forward trend projection for ${horizon}.`,
+          confidence: hData.confidenceScore,
+          userId,
+          metadata: {
+            horizon,
+            confidenceTier: hData.confidenceTier,
+            dimensions: hData.dimensions,
+            status: hData.status,
+          },
+        };
+        if (stateNodeId) {
+          edges.push({
+            sourceNodeId: stateNodeId,
+            targetNodeId: fNodeId,
+            type: 'projects',
+            label: `Projects ${horizon} forward trajectory`,
+          });
+        }
+      }
+    }
+
+    // 9. Weekly Digest Provenance (Phase 13)
+    if (context.weeklyDigest) {
+      const d = context.weeklyDigest;
+      const digestNodeId = `digest_${d.weekStartDate || d.id}`;
+      nodes[digestNodeId] = {
+        id: digestNodeId,
+        type: 'weekly_digest',
+        label: `Weekly Digest (${d.weekStartDate || 'current'})`,
+        summary: d.retrospective?.whatChangedNarrative || 'Weekly retrospective summary.',
+        userId,
+        metadata: {
+          weekStartDate: d.weekStartDate,
+          weekEndDate: d.weekEndDate,
+          isAiEnhanced: d.isAiEnhanced,
+        },
+      };
+      if (stateNodeId) {
+        edges.push({
+          sourceNodeId: stateNodeId,
+          targetNodeId: digestNodeId,
+          type: 'summarizes',
+          label: 'Summarizes weekly state evidence',
+        });
+      }
+    }
+
+    // 10. Decompose Uncertainty
     const uncertaintyDecomposition = currentState
       ? UncertaintyEngine.decompose(currentState, safeSignals, baseline, referenceTime)
       : ({} as any);

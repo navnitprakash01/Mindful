@@ -278,4 +278,50 @@ export const geminiClient = {
       };
     }
   },
+
+  /**
+   * Phase 13: Optional weekly digest verbalization.
+   * Constrained to aggregate facts only, 3000ms timeout, zero PII, non-clinical.
+   */
+  async verbalizeDigest(facts: Record<string, unknown>, timeoutMs = 3000): Promise<string | null> {
+    const ai = getAiClient();
+    if (!ai) return null;
+
+    const systemInstruction =
+      "You are the Mindful Weekly Intelligence summarizer. " +
+      "Provide a concise, 2-3 sentence retrospective summary of the user's past week based ONLY on the provided numeric facts. " +
+      "Guidelines: " +
+      "- Be warm, grounded, and non-judgmental. " +
+      "- NEVER diagnose or use clinical terms (e.g. do not say burnout, depression, or disorder). " +
+      "- DO NOT prescribe interventions or make medical claims. " +
+      "- Reference only the provided numbers and trends.";
+
+    const userPrompt = `Weekly factual statistics:\n${JSON.stringify(facts, null, 2)}`;
+
+    let timer: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
+    });
+
+    try {
+      const apiPromise = ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          temperature: 0.4,
+        },
+      }).then((res: any) => {
+        const text = res.text?.trim();
+        return text || null;
+      }).catch(() => null);
+
+      const result = await Promise.race([apiPromise, timeoutPromise]);
+      return result;
+    } catch {
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  },
 };

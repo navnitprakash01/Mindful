@@ -20,6 +20,8 @@ import proactiveRoutes from "./src/server/routes/proactiveRoutes";
 import wearableRoutes from "./src/server/routes/wearableRoutes";
 import cognitiveRoutes from "./src/server/routes/cognitiveRoutes";
 import habitRoutes from "./src/server/routes/habitRoutes";
+import forecastRoutes from "./src/server/routes/forecastRoutes";
+import digestRoutes from "./src/server/routes/digestRoutes";
 import { supabase } from "./src/server/lib/supabase";
 import { stateService } from "./src/server/services/stateService";
 import { SignalExtractor } from "./src/server/engine/signalExtractor";
@@ -121,6 +123,12 @@ app.use("/api/cognitive", cognitiveRoutes);
 
 // Behavioral Rituals & Habit Action Intelligence API Routes
 app.use("/api/habits", habitRoutes);
+
+// Longitudinal Wellness Intelligence Forecasting API Routes
+app.use("/api/forecast", forecastRoutes);
+
+// Weekly Wellness Intelligence Digest API Routes
+app.use("/api/digest", digestRoutes);
 
 // Companion API Routes
 app.use("/api/companion", companionRoutes);
