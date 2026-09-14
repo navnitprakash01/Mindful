@@ -16,25 +16,25 @@ const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ViewProvider>
-    <JournalProvider>
-      <MoodProvider>
-        <HabitsProvider>
-          <ProfileProvider>
-            <NotificationsProvider>
-              <UIProvider>
-                <ChatProvider>
-                  <StateProvider>
+    <UIProvider>
+      <JournalProvider>
+        <MoodProvider>
+          <ChatProvider>
+            <ProfileProvider>
+              <NotificationsProvider>
+                <StateProvider>
+                  <HabitsProvider>
                     <InterventionProvider>
                       <AppContent>{children}</AppContent>
                     </InterventionProvider>
-                  </StateProvider>
-                </ChatProvider>
-              </UIProvider>
-            </NotificationsProvider>
-          </ProfileProvider>
-        </HabitsProvider>
-      </MoodProvider>
-    </JournalProvider>
+                  </HabitsProvider>
+                </StateProvider>
+              </NotificationsProvider>
+            </ProfileProvider>
+          </ChatProvider>
+        </MoodProvider>
+      </JournalProvider>
+    </UIProvider>
   </ViewProvider>
 );
 

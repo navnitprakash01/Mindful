@@ -1,7 +1,7 @@
 import { isValidUuid, shouldEmitCompanionSignal } from '../engine/providers';
 import { screenForCrisis, CRISIS_HELPLINE_MESSAGE } from '../engine/interventionEngine/safety';
 import { memoryService } from './memoryService';
-import { geminiClient, escapeXml } from './geminiClient';
+import { geminiClient, escapeXml, getContextualFallbackResponse } from './geminiClient';
 import { SignalExtractor } from '../engine/signalExtractor';
 import { stateService } from './stateService';
 
@@ -92,11 +92,7 @@ export const companionService = {
       );
     } catch (err) {
       console.warn('[CompanionService] Fallback to resilient offline response:', err);
-      response = {
-        message: 'I am present with you. How can I support your inner peace and clarity today?',
-        suggestions: DEFAULT_PATHWAYS,
-        timestamp: new Date().toISOString(),
-      };
+      response = getContextualFallbackResponse(trimmedMessage, mode);
     }
 
     const reply = response.message;

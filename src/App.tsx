@@ -18,6 +18,7 @@ const JournalView = lazy(() => import('./components/features/JournalView').then(
 const MoodTrackingView = lazy(() => import('./components/features/MoodTrackingView').then(m => ({ default: m.MoodTrackingView })));
 const AICompanionView = lazy(() => import('./components/features/AICompanionView').then(m => ({ default: m.AICompanionView })));
 const HabitsView = lazy(() => import('./components/features/HabitsView').then(m => ({ default: m.HabitsView })));
+const BodyCheckView = lazy(() => import('./components/features/BodyCheckView').then(m => ({ default: m.BodyCheckView })));
 const AnalyticsView = lazy(() => import('./components/features/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
 const SettingsView = lazy(() => import('./components/features/SettingsView').then(m => ({ default: m.SettingsView })));
 const ProfileView = lazy(() => import('./components/features/ProfileView').then(m => ({ default: m.ProfileView })));
@@ -72,6 +73,8 @@ const AppContent: React.FC = () => {
         return <AICompanionView />;
       case 'habits':
         return <HabitsView />;
+      case 'body_check':
+        return <BodyCheckView />;
       case 'analytics':
         return <AnalyticsView />;
       case 'settings':

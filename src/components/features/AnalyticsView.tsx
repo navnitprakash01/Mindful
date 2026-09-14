@@ -28,10 +28,10 @@ import { ObservatoryLivingSummary } from './observatory/ObservatoryLivingSummary
 import { ObservatoryDeepDive } from './observatory/ObservatoryDeepDive';
 import { ObservatoryColdState } from './observatory/ObservatoryColdState';
 import { MoodCheckInModal } from './MoodCheckInModal';
-import { InterventionPlayerModal } from './intervention/InterventionPlayerModal';
-import { useIntervention } from '../../context/InterventionContext';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { Calendar, RotateCw } from 'lucide-react';
+import { Calendar, RotateCw, ArrowRight, Sparkles, Plus, Activity } from 'lucide-react';
 import { useForecast } from '../../hooks/useForecast';
 import { ForecastTrajectoryCard, WeeklyDigestCard } from './forecast';
 
@@ -41,6 +41,7 @@ export const AnalyticsView: React.FC = () => {
     personalState: appState,
     patterns: appPatterns,
     isPatternsLoading: appPatternsLoading,
+    setCurrentView,
   } = useApp();
 
   const {
@@ -60,7 +61,6 @@ export const AnalyticsView: React.FC = () => {
   const [isDeepDiveOpen, setIsDeepDiveOpen] = useState(false);
   const deepDiveRef = useRef<HTMLDivElement | null>(null);
 
-  const { isPlayerOpen, closePlayer, playerIntervention } = useIntervention();
   const { forecast, digest, isLoading: isForecastLoading } = useForecast();
 
   // Derived 7-day slots from actual mood logs (strict zero-fabrication)
@@ -107,11 +107,6 @@ export const AnalyticsView: React.FC = () => {
       <MoodCheckInModal
         isOpen={isCheckInModalOpen}
         onClose={() => setIsCheckInModalOpen(false)}
-      />
-      <InterventionPlayerModal
-        isOpen={isPlayerOpen}
-        onClose={closePlayer}
-        intervention={playerIntervention}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 pt-24 pb-36 space-y-10">
@@ -204,6 +199,210 @@ export const AnalyticsView: React.FC = () => {
             {digest && <WeeklyDigestCard digest={digest} />}
           </motion.div>
         )}
+
+        {/* ── 4.6. NEXT STEP RECOMMENDATION ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.18 }}
+        >
+          <Card className="p-6 bg-[rgba(13,15,26,0.60)] border-[rgba(255,255,255,0.07)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold tracking-[0.14em] text-[#6ee7b7]">
+                  Your Next Step
+                </span>
+                <Badge variant="primary" size="sm">Recommended Reset</Badge>
+              </div>
+              <h3 className="font-display-lg text-xl text-[rgba(232,234,246,0.95)]">
+                Postural & Sensory Reset
+              </h3>
+              <p className="text-xs sm:text-sm text-[rgba(192,196,234,0.70)] max-w-xl leading-relaxed">
+                Release screen tension, align posture, and calm overstimulated visual pathways in your dedicated Body Check practice.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCurrentView('body_check')}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+              className="shrink-0"
+            >
+              Open Body Check
+            </Button>
+          </Card>
+        </motion.div>
+
+        {/* ── 4.7. PERSONAL STATE OBSERVATORY — Dimension Breakdown ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.22 }}
+        >
+          <div
+            className="p-6 sm:p-8 rounded-[28px]"
+            style={{
+              background: 'rgba(15,18,34,0.50)',
+              backdropFilter: 'blur(32px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.40)',
+            }}
+          >
+            {/* Observatory Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(108,114,232,0.15)', border: '1px solid rgba(108,114,232,0.30)' }}
+                >
+                  <Activity className="w-4 h-4" style={{ color: '#c0c4ea' }} />
+                </div>
+                <div>
+                  <h3 className="font-display-lg text-2xl" style={{ color: 'rgba(232,234,246,0.95)' }}>
+                    Personal State
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-[11px]" style={{ color: 'rgba(232,234,246,0.45)' }}>
+                    <span>Based on your recent signals</span>
+                    <div
+                      className="group/tooltip relative inline-flex items-center cursor-help"
+                      title={"Score: Mindful's current estimate on a 0–100 scale.\nConfidence: How reliable that estimate is based on the available signals."}
+                      aria-label="Score and confidence explanation"
+                    >
+                      <span className="hover:text-[#c0c4ea] transition-colors" style={{ color: 'rgba(108,114,232,0.70)' }}>&#9432;</span>
+                      <div
+                        className="pointer-events-none absolute bottom-full left-0 mb-2 hidden group-hover/tooltip:block w-64 p-2.5 rounded-xl text-[11px] shadow-2xl z-50 leading-relaxed text-left"
+                        style={{ background: '#121526', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(232,234,246,0.85)' }}
+                      >
+                        <div className="font-semibold text-white mb-1">Score &amp; Confidence</div>
+                        <div><strong className="text-[#c0c4ea]">Score:</strong> {"Mindful's current estimate on a 0–100 scale."}</div>
+                        <div className="mt-1"><strong className="text-[#c0c4ea]">Confidence:</strong> How reliable that estimate is based on the available signals.</div>
+                        <div className="mt-1.5 text-[10px] border-t pt-1" style={{ color: 'rgba(232,234,246,0.45)', borderColor: 'rgba(255,255,255,0.06)' }}>
+                          Unified multimodal signal estimate • Exponential decay (t½ = 12h)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {((personalState?.overallConfidence ?? 0) >= 0.10 && (personalState?.activeSignalsCount ?? 0) > 0) ? (
+                  <div
+                    className="group relative cursor-help"
+                    title="How certain Mindful is about this estimate based on the available information."
+                    aria-label="How certain Mindful is about this estimate based on the available information."
+                  >
+                    <Badge variant="sage" size="sm">
+                      Confidence {Math.round((personalState?.overallConfidence ?? 0) * 100)}%
+                    </Badge>
+                    <div
+                      className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-52 p-2 rounded-lg text-[11px] shadow-xl z-50 text-center leading-tight"
+                      style={{ background: '#121526', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(232,234,246,0.85)' }}
+                    >
+                      How certain Mindful is about this estimate based on the available information.
+                    </div>
+                  </div>
+                ) : (
+                  <Badge variant="amber" size="sm">Awaiting data</Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Dimension Cards */}
+            {isCompletelyCold ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(108,114,232,0.10)', border: '1px solid rgba(108,114,232,0.20)' }}
+                >
+                  <Activity className="w-6 h-6" style={{ color: 'rgba(108,114,232,0.60)' }} />
+                </div>
+                <div className="space-y-1 max-w-sm">
+                  <p className="font-display-lg text-lg" style={{ color: 'rgba(232,234,246,0.80)' }}>
+                    Establishing your baseline
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(232,234,246,0.40)' }}>
+                    Complete your first mood check-in to activate the Personal State Engine and begin measuring your wellness dimensions.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                  onClick={() => setIsCheckInModalOpen(true)}
+                >
+                  Begin First Check-in
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+                {[
+                  { label: 'Mood', directionHint: 'Higher = more positive', value: personalState?.dimensions?.mood?.value ?? personalState?.mood ?? 50, confidence: Math.round((personalState?.dimensions?.mood?.confidence ?? 0) * 100), color: '#6ee7b7' },
+                  { label: 'Stress', directionHint: 'Lower = less stress', value: personalState?.dimensions?.stress?.value ?? personalState?.stress ?? 50, confidence: Math.round((personalState?.dimensions?.stress?.confidence ?? 0) * 100), color: '#f4a8c0' },
+                  { label: 'Tiredness', directionHint: 'Lower = less tired', value: personalState?.dimensions?.fatigue?.value ?? personalState?.fatigue ?? 50, confidence: Math.round((personalState?.dimensions?.fatigue?.confidence ?? 0) * 100), color: '#fbbf24' },
+                  { label: 'Energy', directionHint: 'Higher = more energy', value: personalState?.dimensions?.energy?.value ?? personalState?.energy ?? 50, confidence: Math.round((personalState?.dimensions?.energy?.confidence ?? 0) * 100), color: '#38bdf8' },
+                  { label: 'Focus', directionHint: 'Higher = better focus', value: personalState?.dimensions?.focus?.value ?? personalState?.focus ?? 50, confidence: Math.round((personalState?.dimensions?.focus?.confidence ?? 0) * 100), color: '#c0c4ea' },
+                  { label: 'Mental Load', directionHint: 'Lower = less mental load', value: personalState?.dimensions?.cognitiveLoad?.value ?? personalState?.cognitiveLoad ?? 50, confidence: Math.round((personalState?.dimensions?.cognitiveLoad?.confidence ?? 0) * 100), color: '#a78bfa' },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-2xl flex flex-col justify-between relative hover:border-[rgba(255,255,255,0.12)] transition-colors"
+                    style={{
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                    title={`Score: Mindful's current estimate on a 0–100 scale.\nConfidence: ${item.confidence}% (How reliable this estimate is based on the available signals.)`}
+                  >
+                    <div className="flex justify-between items-center mb-1 gap-1">
+                      <span className="text-[10px] uppercase font-semibold tracking-wider truncate" style={{ color: 'rgba(232,234,246,0.40)' }}>
+                        {item.label}
+                      </span>
+                      <div
+                        className="group/cardtooltip relative inline-flex items-center cursor-help"
+                        aria-label={`${item.label} confidence: ${item.confidence}%`}
+                      >
+                        <span className="text-[11px] hover:text-[#c0c4ea] transition-colors" style={{ color: 'rgba(108,114,232,0.50)' }}>&#9432;</span>
+                        <div
+                          className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover/cardtooltip:block w-48 p-2 rounded-xl text-[10px] shadow-2xl z-50 leading-snug text-left"
+                          style={{ background: '#121526', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(232,234,246,0.85)' }}
+                        >
+                          <div className="font-semibold text-white mb-0.5">{item.label}</div>
+                          <div><strong className="text-[#c0c4ea]">Score:</strong> {item.value} / 100</div>
+                          <div><strong className="text-[#c0c4ea]">Confidence:</strong> {item.confidence}%</div>
+                          <div className="mt-1 text-[9px] border-t pt-1" style={{ color: 'rgba(232,234,246,0.45)', borderColor: 'rgba(255,255,255,0.06)' }}>
+                            Confidence reflects reliability based on available signals.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-baseline gap-1 my-1">
+                      <span className="font-display-lg text-2xl" style={{ color: 'rgba(232,234,246,0.90)' }}>
+                        {item.value}
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'rgba(232,234,246,0.30)' }}>/100</span>
+                    </div>
+
+                    <p className="text-[10px] mb-2.5 leading-tight" style={{ color: 'rgba(232,234,246,0.40)' }}>
+                      {item.directionHint}
+                    </p>
+
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${item.value}%`,
+                          backgroundColor: item.color,
+                          boxShadow: `0 0 6px ${item.color}80`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
 
         {/* ── 5. PROGRESSIVE DISCLOSURE: Explore your inner data → ── */}
         <div ref={deepDiveRef}>

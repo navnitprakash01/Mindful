@@ -7,7 +7,8 @@ export type ViewTab =
   | 'habits'
   | 'analytics'
   | 'settings'
-  | 'profile';
+  | 'profile'
+  | 'body_check';
 
 export type CompanionMode =
   | 'Empathetic Listener'
@@ -282,6 +283,13 @@ export interface InterventionSession {
   dimensionDeltas?: Partial<Record<StateDimensionKey, number>>;
   perceivedUsefulness?: number; // 1 - 5
   userFeedback?: string;
+  biofeedbackSummary?: {
+    biofeedbackAssisted?: boolean;
+    somaticStillnessScore?: number;
+    trackingQuality?: number;
+    pacingCycleSeconds?: number;
+    samplesCount?: number;
+  };
   interventionVersion: string;
   createdAt: string;
 }

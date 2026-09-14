@@ -29,19 +29,27 @@ import { EmptyState } from '../ui/EmptyState';
 import { ErrorState } from '../ui/ErrorState';
 import { staggerContainer, staggerChildFast, fadeUp } from '../../lib/motion';
 import { JournalEntry } from '../../types';
+import { interpretJournalContent } from '../../lib/journalInterpreter';
 
 const AUTOSAVE_DELAY_MS = 3000;
 
 const moodColors: Record<string, string> = {
   Reflection: '#c0c4ea',
   Gratitude: '#6ee7b7',
+  Worry: '#fbbf24',
+  'Personal Growth': '#f4a8c0',
+  Mindfulness: '#a78bfa',
+  // Backward compatibility with legacy entries
+  Thoughts: '#c0c4ea',
+  Stress: '#fbbf24',
+  Goals: '#f4a8c0',
+  'Daily Life': '#a78bfa',
   Anxiety: '#fbbf24',
   Growth: '#f4a8c0',
-  Mindfulness: '#a78bfa',
 };
 
-const tags = ['Reflection', 'Gratitude', 'Anxiety', 'Growth', 'Mindfulness'];
-const moods = ['Serene', 'Joyful', 'Calm', 'Anxious', 'Reflective', 'Grateful'];
+const tags = ['Reflection', 'Gratitude', 'Worry', 'Personal Growth', 'Mindfulness'];
+const moods = ['Peaceful', 'Happy', 'Calm', 'Worried', 'Thoughtful', 'Grateful'];
 const PAGE_SIZE = 5;
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -52,8 +60,10 @@ interface AIAnalysis {
   emotions: { name: string; score: number }[];
   summary: string;
   themes: string[];
+  themeExplanation?: string;
   suggestedAction: string;
   reflectionPrompt: string;
+  isLocalSynthesis?: boolean;
 }
 
 const AutosaveIndicator: React.FC<{ status: SaveStatus }> = ({ status }) => (
@@ -192,7 +202,7 @@ export const JournalView: React.FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTag, setSelectedTag] = useState('Reflection');
-  const [selectedMood, setSelectedMood] = useState('Serene');
+  const [selectedMood, setSelectedMood] = useState('Calm');
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -234,7 +244,7 @@ export const JournalView: React.FC = () => {
     setTitle('');
     setContent('');
     setSelectedTag('Reflection');
-    setSelectedMood('Serene');
+    setSelectedMood('Calm');
     setEditingEntryId(null);
     setActiveEntryId(null);
     setAiAnalysis(null);
@@ -261,7 +271,11 @@ export const JournalView: React.FC = () => {
         aiSummary: aiAnalysis?.summary,
         aiAnalysis: aiAnalysis?.reflectionPrompt || aiAnalysis?.summary,
         favorite: false,
-        emotion: selectedTag,
+        emotion: aiAnalysis?.dominantEmotion || selectedMood,
+        aiEmotions: aiAnalysis?.emotions,
+        aiThemes: aiAnalysis?.themes,
+        aiSuggestedAction: aiAnalysis?.suggestedAction,
+        aiReflectionPrompt: aiAnalysis?.reflectionPrompt,
       };
 
       if (editingEntryId) {
@@ -311,7 +325,11 @@ export const JournalView: React.FC = () => {
         aiSummary: aiAnalysis?.summary,
         aiAnalysis: aiAnalysis?.reflectionPrompt || aiAnalysis?.summary,
         favorite: false,
-        emotion: selectedTag,
+        emotion: aiAnalysis?.dominantEmotion || selectedMood,
+        aiEmotions: aiAnalysis?.emotions,
+        aiThemes: aiAnalysis?.themes,
+        aiSuggestedAction: aiAnalysis?.suggestedAction,
+        aiReflectionPrompt: aiAnalysis?.reflectionPrompt,
       };
       const savedEntry = editingEntryId
         ? await updateJournalEntry(editingEntryId, payload)
@@ -336,21 +354,41 @@ export const JournalView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ journalText: content }),
       });
+      if (!res.ok) throw new Error('Analysis request failed');
       const data = await res.json();
-      console.log("Gemini response data:", data);
       setAiAnalysis(data);
       showToast('AI Reflection complete ✨');
       if (activeEntryId || editingEntryId) {
         await updateJournalEntry(activeEntryId ?? editingEntryId!, {
           aiSummary: data.summary,
           aiAnalysis: data.reflectionPrompt || data.summary,
-          mood: data.dominantEmotion || selectedMood,
+          mood: selectedMood,
           moodScore: data.dominantScore || 82,
-          emotion: data.dominantEmotion || selectedTag,
+          emotion: data.dominantEmotion || selectedMood,
+          aiEmotions: data.emotions,
+          aiThemes: data.themes,
+          aiSuggestedAction: data.suggestedAction,
+          aiReflectionPrompt: data.reflectionPrompt,
         });
       }
     } catch {
-      showToast('AI analysis unavailable, using local synthesis');
+      // Local synthesis fallback
+      const fallback = interpretJournalContent(content);
+      setAiAnalysis(fallback);
+      showToast('AI Reflection complete ✨');
+      if (activeEntryId || editingEntryId) {
+        await updateJournalEntry(activeEntryId ?? editingEntryId!, {
+          aiSummary: fallback.summary,
+          aiAnalysis: fallback.reflectionPrompt || fallback.summary,
+          mood: selectedMood,
+          moodScore: fallback.dominantScore || 82,
+          emotion: fallback.dominantEmotion || selectedMood,
+          aiEmotions: fallback.emotions,
+          aiThemes: fallback.themes,
+          aiSuggestedAction: fallback.suggestedAction,
+          aiReflectionPrompt: fallback.reflectionPrompt,
+        });
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -451,21 +489,29 @@ export const JournalView: React.FC = () => {
     setTitle(entry.title);
     setContent(entry.content);
     setSelectedTag(entry.tags[0] || 'Reflection');
-    setSelectedMood(entry.mood);
+    setSelectedMood(entry.mood || 'Calm');
     savedContentRef.current = entry.content;
-setAiAnalysis(
-      entry.aiSummary || entry.aiAnalysis
-        ? {
-            dominantEmotion: entry.emotion || entry.mood || 'Reflective',
-            dominantScore: entry.moodScore || 75,
-            emotions: entry.aiEmotions || [],
-            summary: entry.aiSummary || '',
-            themes: entry.aiThemes || [],
-            suggestedAction: entry.aiSuggestedAction || '',
-            reflectionPrompt: entry.aiReflectionPrompt || entry.aiAnalysis || '',
-          }
-        : null
-    );
+
+    const legacySummary = entry.aiSummary?.includes('linguistic heuristics') || false;
+    const missingThemes = !entry.aiThemes || entry.aiThemes.length === 0;
+    const isGenericEmotion = !entry.emotion || entry.emotion === 'Thoughts' || entry.emotion === 'Reflection' || entry.emotion === 'Daily Life';
+
+    if ((legacySummary || missingThemes || isGenericEmotion) && entry.content.trim().length > 10) {
+      const interpreted = interpretJournalContent(entry.content, { mood: entry.moodScore });
+      setAiAnalysis(interpreted);
+    } else if (entry.aiSummary || entry.aiAnalysis) {
+      setAiAnalysis({
+        dominantEmotion: entry.emotion || entry.mood || 'Thoughtful reflection',
+        dominantScore: entry.moodScore || 75,
+        emotions: entry.aiEmotions || [],
+        summary: entry.aiSummary || '',
+        themes: entry.aiThemes || [],
+        suggestedAction: entry.aiSuggestedAction || '',
+        reflectionPrompt: entry.aiReflectionPrompt || entry.aiAnalysis || '',
+      });
+    } else {
+      setAiAnalysis(null);
+    }
     setTranscript('');
     setRecordingTime(0);
     setRecognitionError(null);
@@ -490,22 +536,17 @@ setAiAnalysis(
   };
 
   const getEmotionEmoji = (emotion: string) => {
-    const emojiMap: Record<string, string> = {
-      Overwhelmed: '😰',
-      Anxious: '😟',
-      Stressed: '😣',
-      Calm: '😌',
-      Peaceful: '😊',
-      Joyful: '😄',
-      Grateful: '🙏',
-      Hopeful: '🌱',
-      Confident: '💪',
-      Reflective: '🤔',
-      Sad: '😢',
-      Angry: '😠',
-      Neutral: '😐',
-    };
-    return emojiMap[emotion] || '💭';
+    const lower = (emotion || '').toLowerCase();
+    if (lower.includes('tired') || lower.includes('fatigue') || lower.includes('exhaust')) return '🥱';
+    if (lower.includes('worried') || lower.includes('anxious') || lower.includes('stress') || lower.includes('tension')) return '😟';
+    if (lower.includes('happy') || lower.includes('joy') || lower.includes('cheer')) return '😄';
+    if (lower.includes('grateful') || lower.includes('thank')) return '🙏';
+    if (lower.includes('energized') || lower.includes('uplift') || lower.includes('positive')) return '⚡';
+    if (lower.includes('calm') || lower.includes('peace') || lower.includes('serene')) return '😌';
+    if (lower.includes('okay') || lower.includes('good') || lower.includes('grounded')) return '🙂';
+    if (lower.includes('hope')) return '🌱';
+    if (lower.includes('focus')) return '🎯';
+    return '💭';
   };
 
   return (
@@ -575,7 +616,7 @@ setAiAnalysis(
                     key={tag}
                     variant={selectedTag === tag ? 'lavender' : 'slate'}
                     onClick={() => setSelectedTag(tag)}
-                    className="cursor-pointer transition-all hover:scale-105"
+                    className="cursor-pointer transition-all hover:scale-105 uppercase tracking-wider text-[11px] font-semibold"
                     style={
                       selectedTag === tag
                         ? { color: moodColors[tag] || '#c0c4ea', borderColor: `${moodColors[tag] || '#c0c4ea'}40` } as React.CSSProperties
@@ -679,18 +720,18 @@ setAiAnalysis(
 
                     <div className="space-y-3 text-[12px]">
                       {/* Dominant Emotion + Score */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{getEmotionEmoji(aiAnalysis.dominantEmotion)}</span>
+                      <div className="flex items-start gap-2">
+                        <span className="text-base mt-0.5">{getEmotionEmoji(aiAnalysis.dominantEmotion)}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-[rgba(232,234,246,0.90)] truncate pr-2">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="font-semibold text-[rgba(232,234,246,0.92)] text-xs leading-snug">
                               {aiAnalysis.dominantEmotion}
                             </span>
-                            <span className="text-[rgba(192,196,234,0.50)] font-mono text-[10px] shrink-0 ml-2">
+                            <span className="text-[rgba(192,196,234,0.50)] font-mono text-[10px] shrink-0">
                               {aiAnalysis.dominantScore}%
                             </span>
                           </div>
-                          <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden mt-1">
+                          <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden mt-1.5">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${aiAnalysis.dominantScore}%` }}
@@ -722,34 +763,38 @@ setAiAnalysis(
                         </div>
                       </div>
 
-                      {/* Summary */}
+                      {/* Summary (Human-readable summary of user's journal content) */}
                       <div className="pt-2 border-t border-[rgba(255,255,255,0.04)]">
                         <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Summary</span>
-                        <div className="h-[4.5rem] overflow-hidden">
-                          <p className="text-[rgba(192,196,234,0.75)] leading-6 text-xs line-clamp-3 h-full">{aiAnalysis.summary}</p>
-                        </div>
+                        <p className="text-[rgba(192,196,234,0.85)] leading-relaxed text-xs">{aiAnalysis.summary}</p>
                       </div>
 
-                      {/* Key Themes - Compact Chips */}
+                      {/* Key Themes - Grounded Chips & Explanation */}
                       <div className="pt-2 border-t border-[rgba(255,255,255,0.04)]">
                         <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1.5 text-[10px]">Key Themes</span>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
                           {(aiAnalysis.themes || []).slice(0, 3).map((t, i) => (
                             <span
                               key={i}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(108,114,232,0.15)] text-[#c0c4ea] border border-[rgba(108,114,232,0.25)] whitespace-nowrap"
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(108,114,232,0.15)] text-[#c0c4ea] border border-[rgba(108,114,232,0.25)] whitespace-nowrap"
                             >
                               {t}
                             </span>
                           ))}
                         </div>
+                        {aiAnalysis.themeExplanation && (
+                          <p className="text-[rgba(192,196,234,0.70)] text-[11px] leading-relaxed">
+                            {aiAnalysis.themeExplanation}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Suggested Action - Compact Highlighted */}
+                      {/* Suggested Action - Context-Aware, Non-Cliché */}
                       <div className="pt-2 border-t border-[rgba(255,255,255,0.04)]">
+                        <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1.5 text-[10px]">Recommended Action</span>
                         <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[rgba(108,114,232,0.10)] border border-[rgba(108,114,232,0.20)]">
-                          <Zap className="w-3 h-3 text-[#6c72e8] shrink-0 mt-0.5" />
-                          <p className="text-[rgba(232,234,246,0.85)] text-[12px] leading-snug">{aiAnalysis.suggestedAction || ''}</p>
+                          <Zap className="w-3.5 h-3.5 text-[#6c72e8] shrink-0 mt-0.5" />
+                          <p className="text-[rgba(232,234,246,0.88)] text-[12px] leading-snug">{aiAnalysis.suggestedAction || ''}</p>
                         </div>
                       </div>
 
@@ -759,6 +804,12 @@ setAiAnalysis(
                           <span className="text-[rgba(192,196,234,0.45)] font-semibold uppercase tracking-wider block mb-1 text-[10px]">Reflection</span>
                           <p className="text-[rgba(232,234,246,0.70)] italic leading-snug">"{aiAnalysis.reflectionPrompt || ''}"</p>
                         </div>
+                      </div>
+
+                      {/* Provenance & Privacy Boundary (Separated from Summary) */}
+                      <div className="pt-2 border-t border-[rgba(255,255,255,0.04)] flex items-center justify-between text-[10px] text-[rgba(192,196,234,0.40)] font-mono">
+                        <span>{aiAnalysis.isLocalSynthesis ? 'Analyzed locally' : 'Analysis based on the language in your journal'}</span>
+                        <span>Private · Non-clinical</span>
                       </div>
                     </div>
                   </Card>

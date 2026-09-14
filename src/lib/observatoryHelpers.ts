@@ -161,14 +161,14 @@ export const DIMENSION_METADATA: Record<
     isPrimary: false,
   },
   fatigue: {
-    label: 'Fatigue',
+    label: 'Tiredness',
     color: '#fbbf24',
     description: 'Somatic weariness & recovery need',
     baseCoord: [-120, 110, -25],
     isPrimary: false,
   },
   cognitiveLoad: {
-    label: 'Cognitive Load',
+    label: 'Mental Load',
     color: '#a78bfa',
     description: 'Working memory saturation & complexity',
     baseCoord: [45, -75, -60],

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ViewTab } from '../../types';
-import { BookOpen, Sparkles, LayoutGrid, HeartHandshake, CheckSquare, BarChart3, Compass, X } from 'lucide-react';
+import { BookOpen, Sparkles, LayoutGrid, HeartHandshake, CheckSquare, BarChart3, Compass, X, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const BottomNav: React.FC = () => {
@@ -34,10 +34,11 @@ export const BottomNav: React.FC = () => {
   const isCompanion = currentView === 'companion';
 
   const items: { label: string; view: ViewTab; icon: React.ReactNode }[] = [
-    { label: 'Journal', view: 'journal', icon: <BookOpen className="w-4.5 h-4.5" /> },
-    { label: 'AI Chat', view: 'companion', icon: <Sparkles className="w-4.5 h-4.5" /> },
     { label: 'Home', view: 'dashboard', icon: <LayoutGrid className="w-4.5 h-4.5" /> },
-    { label: 'Mood', view: 'mood', icon: <HeartHandshake className="w-4.5 h-4.5" /> },
+    { label: 'Mood Log', view: 'mood', icon: <HeartHandshake className="w-4.5 h-4.5" /> },
+    { label: 'Journal', view: 'journal', icon: <BookOpen className="w-4.5 h-4.5" /> },
+    { label: 'Wellness', view: 'body_check', icon: <Activity className="w-4.5 h-4.5" /> },
+    { label: 'AI Chat', view: 'companion', icon: <Sparkles className="w-4.5 h-4.5" /> },
     { label: 'Habits', view: 'habits', icon: <CheckSquare className="w-4.5 h-4.5" /> },
     { label: 'Insights', view: 'analytics', icon: <BarChart3 className="w-4.5 h-4.5" /> },
   ];
@@ -156,7 +157,7 @@ export const BottomNav: React.FC = () => {
               <button
                 key={item.view}
                 onClick={() => setCurrentView(item.view)}
-                className={`relative flex flex-col items-center justify-center py-2 px-3.5 rounded-xl transition-all duration-200 ${
+                className={`relative flex flex-col items-center justify-center py-1.5 px-2 sm:px-3 rounded-xl transition-all duration-200 ${
                   isActive
                     ? 'text-white'
                     : 'text-[rgba(232,234,246,0.35)] hover:text-[rgba(232,234,246,0.70)]'

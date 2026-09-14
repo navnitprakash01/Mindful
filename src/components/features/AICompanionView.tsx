@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Sparkles, Send, Volume2, VolumeX, Trash2, ArrowLeft, Bot } from 'lucide-react';
@@ -40,12 +40,50 @@ export const AICompanionView: React.FC = () => {
   const [mode, setMode] = useState<CompanionMode>('Empathetic Listener');
   const [isSending, setIsSending] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [currentlySpeakingId, setCurrentlySpeakingId] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const stopSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setCurrentlySpeakingId(null);
+  }, []);
+
+  const speakMessage = useCallback((id: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    if (currentlySpeakingId === id) {
+      setCurrentlySpeakingId(null);
+      return;
+    }
+
+    // Clean text: strip markdown symbols (*, _, `, #) for clear natural TTS
+    const cleanText = text.replace(/[*_~`#]/g, '').trim();
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setCurrentlySpeakingId(null);
+    utterance.onerror = () => setCurrentlySpeakingId(null);
+
+    setCurrentlySpeakingId(id);
+    window.speechSynthesis.speak(utterance);
+  }, [currentlySpeakingId]);
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, [stopSpeech]);
 
   useEffect(() => {
     scrollToBottom();
@@ -55,22 +93,30 @@ export const AICompanionView: React.FC = () => {
     const msgText = textToSend || input;
     if (!msgText.trim()) return;
 
+    // Immediately stop any active speech when sending a new message
+    stopSpeech();
+
     if (!textToSend) setInput('');
     setIsSending(true);
 
-    await addChatMessage({ sender: 'user', text: msgText, mode });
+    const companionReply = await addChatMessage({ sender: 'user', text: msgText, mode });
     setIsSending(false);
 
-    if (voiceEnabled && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const lastMsg = chatMessages[chatMessages.length - 1];
-      if (lastMsg) {
-        const utterance = new SpeechSynthesisUtterance(lastMsg.text.slice(0, 150));
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
-      }
+    if (voiceEnabled && companionReply?.text) {
+      speakMessage(companionReply.id, companionReply.text);
     }
+  };
+
+  const handleToggleVoice = () => {
+    if (voiceEnabled) {
+      stopSpeech();
+    }
+    setVoiceEnabled(!voiceEnabled);
+  };
+
+  const handleClearChat = () => {
+    stopSpeech();
+    clearChat();
   };
 
   const currentConfig = modeConfig[mode];
@@ -112,7 +158,7 @@ export const AICompanionView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            onClick={handleToggleVoice}
             className={`p-2 rounded-xl border transition-all ${
               voiceEnabled
                 ? 'bg-[rgba(108,114,232,0.15)] text-[#c0c4ea] border-[rgba(108,114,232,0.30)]'
@@ -125,7 +171,7 @@ export const AICompanionView: React.FC = () => {
             {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
           <button
-            onClick={clearChat}
+            onClick={handleClearChat}
             className="p-2 bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(242,139,130,0.10)] text-[rgba(232,234,246,0.30)] hover:text-[#f28b82] rounded-xl border border-[rgba(255,255,255,0.06)] hover:border-[rgba(242,139,130,0.25)] transition-all"
             title="Clear Session"
             aria-label="Clear Chat Session"
@@ -180,18 +226,40 @@ export const AICompanionView: React.FC = () => {
                 msg.sender === 'user' ? 'self-end items-end' : 'self-start items-start'
               }`}
             >
-              {/* Avatar + name row */}
-              <div className={`flex items-center gap-2 mb-1.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                  msg.sender === 'companion'
-                    ? 'bg-gradient-to-br from-[rgba(108,114,232,0.50)] to-[rgba(192,196,234,0.25)]'
-                    : 'bg-[rgba(255,255,255,0.10)]'
-                }`}>
-                  {msg.sender === 'companion' ? <Sparkles className="w-3 h-3 text-white" /> : <Bot className="w-3 h-3 text-[rgba(232,234,246,0.60)]" />}
+              {/* Avatar + name + audio trigger row */}
+              <div className={`flex items-center justify-between w-full mb-1.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-center gap-2 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    msg.sender === 'companion'
+                      ? 'bg-gradient-to-br from-[rgba(108,114,232,0.50)] to-[rgba(192,196,234,0.25)]'
+                      : 'bg-[rgba(255,255,255,0.10)]'
+                  }`}>
+                    {msg.sender === 'companion' ? <Sparkles className="w-3 h-3 text-white" /> : <Bot className="w-3 h-3 text-[rgba(232,234,246,0.60)]" />}
+                  </div>
+                  <span className="text-[10px] text-[rgba(232,234,246,0.25)] font-mono">
+                    {msg.sender === 'user' ? 'You' : `Companion`} · {msg.timestamp}
+                  </span>
                 </div>
-                <span className="text-[10px] text-[rgba(232,234,246,0.25)] font-mono">
-                  {msg.sender === 'user' ? 'You' : `Companion`} · {msg.timestamp}
-                </span>
+
+                {msg.sender === 'companion' && (
+                  <button
+                    type="button"
+                    onClick={() => speakMessage(msg.id, msg.text)}
+                    className={`p-1 px-1.5 rounded-lg text-xs transition-all flex items-center gap-1 ${
+                      currentlySpeakingId === msg.id
+                        ? 'text-[#8a8ff4] bg-[rgba(108,114,232,0.25)] border border-[rgba(108,114,232,0.40)]'
+                        : 'text-[rgba(232,234,246,0.35)] hover:text-[rgba(232,234,246,0.85)] hover:bg-[rgba(255,255,255,0.06)]'
+                    }`}
+                    title={currentlySpeakingId === msg.id ? 'Stop audio' : 'Listen to response'}
+                    aria-label={currentlySpeakingId === msg.id ? 'Stop audio' : 'Listen to response'}
+                  >
+                    {currentlySpeakingId === msg.id ? (
+                      <VolumeX className="w-3.5 h-3.5 animate-pulse text-[#8a8ff4]" />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
               </div>
 
               <div

@@ -58,7 +58,7 @@ export interface AppContextType {
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
   chatMessages: ChatMessage[];
-  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<void>;
+  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<ChatMessage | null>;
   clearChat: () => void;
   isPricingModalOpen: boolean;
   setIsPricingModalOpen: (open: boolean) => void;

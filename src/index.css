@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   MINDFUL — PREMIUM DESIGN SYSTEM
+   MINDFUL â€” PREMIUM DESIGN SYSTEM
    ============================================================ */
 
 /* ----------------------------------------------------------
@@ -35,16 +35,16 @@ body {
 }
 
 /* ----------------------------------------------------------
-   DESIGN TOKENS — Custom Properties
+   DESIGN TOKENS â€” Custom Properties
    ---------------------------------------------------------- */
 :root {
-  /* Primary Palette — Deep Indigo */
+  /* Primary Palette â€” Deep Indigo */
   --color-primary: #6c72e8;
   --color-primary-light: #9599f0;
   --color-primary-dark: #4a50c8;
   --color-primary-glow: rgba(108, 114, 232, 0.3);
 
-  /* Secondary — Rose Blush */
+  /* Secondary â€” Rose Blush */
   --color-secondary: #e8799a;
   --color-secondary-light: #f0a0b8;
 
@@ -237,7 +237,7 @@ body {
   66% { transform: translate(-15px, 10px) scale(0.95); }
 }
 
-/* Aurora blob drift — used by AuroraBackground component */
+/* Aurora blob drift â€” used by AuroraBackground component */
 @keyframes aurora-drift {
   0%   { transform: translate(0, 0)      scale(1);    }
   20%  { transform: translate(3%, -4%)   scale(1.04); }
@@ -384,7 +384,7 @@ body {
 }
 
 /* ----------------------------------------------------------
-   FORM INPUTS — GLOBAL OVERRIDES
+   FORM INPUTS â€” GLOBAL OVERRIDES
    ---------------------------------------------------------- */
 input[type="range"] {
   -webkit-appearance: none;
@@ -552,4 +552,329 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
+/* ============================================================
+   LIVING CINEMATIC DASHBOARD ANIMATIONS
+   ============================================================ */
+
+/* Central 3D Wellness Orb Animations */
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-14px) scale(1.02); }
+}
+
+@keyframes orbBreathe {
+  0%, 100% {
+    box-shadow: 0 0 50px rgba(140,70,255,0.45), 0 0 100px rgba(120,50,240,0.28), 0 0 180px rgba(100,40,220,0.18);
+    opacity: 0.92;
+  }
+  50% {
+    box-shadow: 0 0 80px rgba(160,90,255,0.65), 0 0 140px rgba(140,70,250,0.45), 0 0 220px rgba(120,50,230,0.28);
+    opacity: 1;
+  }
+}
+
+@keyframes orbRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes specularDrift {
+  0%, 100% { transform: translate(-10%, -10%) rotate(0deg); opacity: 0.6; }
+  50% { transform: translate(10%, 15%) rotate(180deg); opacity: 0.9; }
+}
+
+/* 3D Inclined Orbital Rings */
+@keyframes orbitCw {
+  0% { transform: rotateX(68deg) rotateY(18deg) rotateZ(0deg); }
+  100% { transform: rotateX(68deg) rotateY(18deg) rotateZ(360deg); }
+}
+
+@keyframes orbitCcw {
+  0% { transform: rotateX(68deg) rotateY(-22deg) rotateZ(360deg); }
+  100% { transform: rotateX(68deg) rotateY(-22deg) rotateZ(0deg); }
+}
+
+/* Water Ripple Animations */
+@keyframes waterRipple {
+  0% { transform: scale(0.65); opacity: 0.80; }
+  50% { opacity: 0.45; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+@keyframes waterShimmer {
+  0%, 100% { opacity: 0.35; transform: scaleX(1); }
+  50% { opacity: 0.65; transform: scaleX(1.08); }
+}
+
+/* Atmospheric Particles Drifting */
+@keyframes particleDrift1 {
+  0% { transform: translateY(0px) translateX(0px); opacity: 0; }
+  15% { opacity: 0.85; }
+  85% { opacity: 0.85; }
+  100% { transform: translateY(-150px) translateX(35px); opacity: 0; }
+}
+
+@keyframes particleDrift2 {
+  0% { transform: translateY(0px) translateX(0px); opacity: 0; }
+  20% { opacity: 0.90; }
+  80% { opacity: 0.90; }
+  100% { transform: translateY(-180px) translateX(-45px); opacity: 0; }
+}
+
+@keyframes particleDrift3 {
+  0% { transform: translateY(0px) translateX(0px); opacity: 0; }
+  25% { opacity: 0.75; }
+  75% { opacity: 0.75; }
+  100% { transform: translateY(-210px) translateX(28px); opacity: 0; }
+}
+
+@keyframes particleDrift4 {
+  0% { transform: translateY(0px) translateX(0px); opacity: 0; }
+  20% { opacity: 0.80; }
+  80% { opacity: 0.80; }
+  100% { transform: translateY(-160px) translateX(-25px); opacity: 0; }
+}
+
+/* Floating Stat Cards */
+@keyframes cardFloat1 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes cardFloat2 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes cardFloat3 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes cardFloat4 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Primary CTA Shimmer Sweep */
+@keyframes shimmerSweep {
+  0%, 65% { transform: translateX(-150%) skewX(-20deg); opacity: 0; }
+  75% { opacity: 0.8; }
+  85%, 100% { transform: translateX(250%) skewX(-20deg); opacity: 0; }
+}
+
+/* Celestial Moon Glow Breathing */
+@keyframes moonGlow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(255,200,80,0.50), 0 0 70px rgba(255,170,50,0.28), 0 0 120px rgba(255,140,20,0.15);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(255,210,90,0.70), 0 0 100px rgba(255,180,60,0.38), 0 0 160px rgba(255,150,30,0.22);
+  }
+}
+
+/* â”€â”€ ENVIRONMENT & ATMOSPHERE KEYFRAMES â”€â”€ */
+
+@keyframes villageLight {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  40% { opacity: 0.90; transform: scale(1.25); }
+  70% { opacity: 0.45; transform: scale(0.85); }
+}
+
+@keyframes moonHaloBreath {
+  0%, 100% { opacity: 0.70; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  30% { opacity: 0.30; transform: scale(0.65); }
+  60% { opacity: 1; transform: scale(1.25); }
+}
+
+@keyframes waterLineShimmer {
+  0%, 100% { opacity: 0.06; transform: scaleX(0.80); }
+  50% { opacity: 0.20; transform: scaleX(1.08); }
+}
+
+@keyframes waterReflectionPulse {
+  0%, 100% { opacity: 0.65; transform: translateX(-50%) scaleX(1); }
+  50% { opacity: 1; transform: translateX(-50%) scaleX(1.10); }
+}
+
+@keyframes orbAuraBreath {
+  0%, 100% { opacity: 0.65; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+}
+
+@keyframes coreGlow {
+  0%, 100% { opacity: 0.82; filter: blur(8px); }
+  50% { opacity: 1; filter: blur(5px); }
+}
+
+@keyframes barPulse {
+  0%, 100% { opacity: 0.45; transform: scaleY(0.80); }
+  50% { opacity: 0.90; transform: scaleY(1); }
+}
+
+@keyframes equalizerPulse1 {
+  0%, 100% { height: 6px; }
+  50% { height: 16px; }
+}
+@keyframes equalizerPulse2 {
+  0%, 100% { height: 10px; }
+  50% { height: 6px; }
+}
+@keyframes equalizerPulse3 {
+  0%, 100% { height: 14px; }
+  50% { height: 8px; }
+}
+@keyframes equalizerPulse4 {
+  0%, 100% { height: 8px; }
+  50% { height: 18px; }
+}
+
+@keyframes waterfallFlow {
+  0% { transform: translateY(0); opacity: 0.75; }
+  50% { opacity: 0.95; }
+  100% { transform: translateY(8px); opacity: 0.75; }
+}
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+  50% { transform: scaleY(1.1); opacity: 1; }
+}
+
+/* Utility classes */
+.anim-orb-float {
+  animation: orbFloat 9s ease-in-out infinite;
+}
+
+.anim-orb-breathe {
+  animation: orbBreathe 5s ease-in-out infinite;
+}
+
+.anim-specular {
+  animation: specularDrift 10s ease-in-out infinite;
+}
+
+.anim-orbit-cw {
+  animation: orbitCw 14s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.anim-orbit-ccw {
+  animation: orbitCcw 20s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.anim-ripple-1 {
+  animation: waterRipple 6s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+}
+
+.anim-ripple-2 {
+  animation: waterRipple 6s cubic-bezier(0.2, 0.8, 0.4, 1) 2s infinite;
+}
+
+.anim-ripple-3 {
+  animation: waterRipple 6s cubic-bezier(0.2, 0.8, 0.4, 1) 4s infinite;
+}
+
+.anim-water-shimmer {
+  animation: waterShimmer 8s ease-in-out infinite;
+}
+
+.anim-card-float-1 {
+  animation: cardFloat1 8s ease-in-out infinite;
+}
+
+.anim-card-float-2 {
+  animation: cardFloat2 9s ease-in-out infinite;
+}
+
+.anim-card-float-3 {
+  animation: cardFloat3 10s ease-in-out infinite;
+}
+
+.anim-card-float-4 {
+  animation: cardFloat4 11s ease-in-out infinite;
+}
+
+.anim-cta-sweep {
+  animation: shimmerSweep 7s ease-in-out infinite;
+}
+
+.anim-moon-glow {
+  animation: moonGlow 8s ease-in-out infinite;
+}
+
+.anim-particle-1 {
+  animation: particleDrift1 9s ease-in-out infinite;
+}
+
+.anim-particle-2 {
+  animation: particleDrift2 13s ease-in-out infinite;
+}
+
+.anim-particle-3 {
+  animation: particleDrift3 17s ease-in-out infinite;
+}
+
+.anim-particle-4 {
+  animation: particleDrift4 21s ease-in-out infinite;
+}
+
+
+@keyframes fogDrift {
+  0%, 100% { opacity: 0.65; transform: translateX(0) scaleX(1); }
+  50% { opacity: 1; transform: translateX(3%) scaleX(1.04); }
+}
+
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(4px); }
+}
+
+/* Utility classes */
+.anim-fog-drift {
+  animation: fogDrift 14s ease-in-out infinite;
+}
+
+.anim-scroll-bounce {
+  animation: scrollBounce 3s ease-in-out infinite;
+}
+
+/* Cinematic stat card hover elevation */
+.cinematic-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.14), inset 0 1px 0 rgba(255,255,255,0.14);
+}
+
+/* Reduced Motion Enforcement */
+@media (prefers-reduced-motion: reduce) {
+  .anim-orb-float,
+  .anim-orb-breathe,
+  .anim-specular,
+  .anim-orbit-cw,
+  .anim-orbit-ccw,
+  .anim-ripple-1,
+  .anim-ripple-2,
+  .anim-ripple-3,
+  .anim-water-shimmer,
+  .anim-card-float-1,
+  .anim-card-float-2,
+  .anim-card-float-3,
+  .anim-card-float-4,
+  .anim-cta-sweep,
+  .anim-moon-glow,
+  .anim-particle-1,
+  .anim-particle-2,
+  .anim-particle-3,
+  .anim-particle-4,
+  .anim-fog-drift,
+  .anim-scroll-bounce {
+    animation: none !important;
+    transform: none !important;
+  }
+}
 

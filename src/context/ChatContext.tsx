@@ -3,7 +3,7 @@ import { ChatMessage, CompanionMode } from '../types';
 import { useAuth } from "./AuthContext";
 interface ChatContextType {
   chatMessages: ChatMessage[];
-  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<void>;
+  addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<ChatMessage | null>;
   clearChat: () => void;
 }
 
@@ -54,7 +54,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [chatMessages]);
 
-  const addChatMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => {
+  const addChatMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'timestamp'>): Promise<ChatMessage | null> => {
     const userMsg: ChatMessage = {
       ...msg,
       id: `c-${Date.now()}`,
@@ -103,13 +103,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         text: data.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         mode: msg.mode,
-        suggestedPathways: data.suggestedPathways || [
+        suggestedPathways: data.suggestedPathways || data.suggestions || [
           "Help me reframe this thought",
           "Guide me through a calming breath",
           "Explore what triggered this feeling"
         ],
       };
       setChatMessages((prev) => [...prev, companionReply]);
+      return companionReply;
     } catch (err: unknown) {
       console.error("Companion chat error:", err);
       const errorReply: ChatMessage = {
@@ -121,6 +122,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         suggestedPathways: ["Try again", "Guide me through a calming breath"],
       };
       setChatMessages((prev) => [...prev, errorReply]);
+      return errorReply;
     }
   }, [chatMessages, session?.access_token]);
 

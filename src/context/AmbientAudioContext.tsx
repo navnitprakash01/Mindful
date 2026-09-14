@@ -120,7 +120,11 @@ export const AmbientAudioProvider: React.FC<{ children: React.ReactNode }> = ({ 
 export const useAmbientAudio = () => {
   const context = useContext(AmbientAudioContext);
   if (!context) {
-    throw new Error('useAmbientAudio must be used within an AmbientAudioProvider');
+    return {
+      isPlaying: false,
+      togglePlayback: () => {},
+      setPlaying: () => {},
+    };
   }
   return context;
 };

@@ -25,9 +25,10 @@ export const Header: React.FC = () => {
 
   const navLinks: { label: string; view: ViewTab }[] = [
     { label: 'Dashboard', view: 'dashboard' },
+    { label: 'Mood Log', view: 'mood' },
     { label: 'Journal', view: 'journal' },
+    { label: 'Wellness Check', view: 'body_check' },
     { label: 'Companion', view: 'companion' },
-    { label: 'Landscape', view: 'mood' },
     { label: 'Habits', view: 'habits' },
     { label: 'Insights', view: 'analytics' },
   ];
@@ -82,7 +83,7 @@ export const Header: React.FC = () => {
                 {currentView === link.view && (
                   <motion.div
                     layoutId="nav-indicator"
-                    className="absolute inset-0 rounded-xl bg-[rgba(108,114,232,0.16)] border border-[rgba(108,114,232,0.25)]"
+                    className="absolute inset-0 rounded-xl bg-[rgba(108,114,232,0.16)] border border-[rgba(108,114,232,0.30)] shadow-[0_0_12px_rgba(108,114,232,0.25)]"
                     transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                   />
                 )}
@@ -151,9 +152,10 @@ export const Header: React.FC = () => {
               {unreadCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
+                  animate={{ scale: [1, 1.18, 1], opacity: [0.85, 1, 0.85] }}
                   exit={{ scale: 0 }}
-                  className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#e8799a] rounded-full shadow-[0_0_8px_rgba(232,121,154,0.80)]"
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#e8799a] rounded-full shadow-[0_0_10px_rgba(232,121,154,0.90)]"
                 />
               )}
             </AnimatePresence>
@@ -165,7 +167,7 @@ export const Header: React.FC = () => {
             aria-label="View user profile"
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-[rgba(255,255,255,0.06)] transition-all duration-200 group"
           >
-            <div className="w-7 h-7 rounded-lg overflow-hidden border border-[rgba(108,114,232,0.25)] group-hover:border-[rgba(108,114,232,0.50)] transition-colors">
+            <div className="w-7 h-7 rounded-lg overflow-hidden border border-[rgba(108,114,232,0.30)] shadow-[0_0_10px_rgba(108,114,232,0.25)] group-hover:border-[rgba(108,114,232,0.60)] group-hover:shadow-[0_0_16px_rgba(108,114,232,0.45)] transition-all">
               <img
                 src={userProfile.avatarUrl}
                 alt={userProfile.name}
