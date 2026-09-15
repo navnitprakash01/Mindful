@@ -14,6 +14,7 @@ import { Badge } from '../../ui/Badge';
 import { Card } from '../../ui/Card';
 import { useAuth } from '../../../context/AuthContext';
 import { ProactiveDecision } from '../../../server/engine/proactiveEngine/types';
+import { getApiUrl } from '../../../lib/api';
 
 interface ProactiveCheckInCardProps {
   onStartIntervention?: (interventionId: string) => void;
@@ -37,7 +38,7 @@ export const ProactiveCheckInCard: React.FC<ProactiveCheckInCardProps> = ({
       if (!token) return;
 
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const res = await fetch(`/api/proactive/check?timezone=${encodeURIComponent(userTimezone)}`, {
+      const res = await fetch(getApiUrl(`/api/proactive/check?timezone=${encodeURIComponent(userTimezone)}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -50,7 +51,7 @@ export const ProactiveCheckInCard: React.FC<ProactiveCheckInCardProps> = ({
           if (lastSurfacedKeyRef.current !== surfaceKey) {
             lastSurfacedKeyRef.current = surfaceKey;
             try {
-              const surfacedRes = await fetch('/api/proactive/surfaced', {
+              const surfacedRes = await fetch(getApiUrl('/api/proactive/surfaced'), {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -103,7 +104,7 @@ export const ProactiveCheckInCard: React.FC<ProactiveCheckInCardProps> = ({
         const token = await getAccessToken();
         if (token) {
           // Record dismissal buffer using actual surfaced event ID
-          await fetch('/api/proactive/respond', {
+          await fetch(getApiUrl('/api/proactive/respond'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export const ProactiveCheckInCard: React.FC<ProactiveCheckInCardProps> = ({
       try {
         const token = await getAccessToken();
         if (token) {
-          await fetch('/api/proactive/respond', {
+          await fetch(getApiUrl('/api/proactive/respond'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

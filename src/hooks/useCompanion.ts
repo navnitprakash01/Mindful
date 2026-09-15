@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ConversationMessage, QuickAction } from '../types/companion';
+import { getApiUrl } from '../lib/api';
 
 const initialQuickActions: QuickAction[] = [
   { id: '1', label: 'Reflect', prompt: 'Help me reflect on my day and what I learned.' },
@@ -62,7 +63,7 @@ export const useCompanion = () => {
         .map(m => ({ role: m.role, content: m.content }));
 
       const accessToken = session?.access_token;
-      const response = await fetch('/api/companion/chat', {
+      const response = await fetch(getApiUrl('/api/companion/chat'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

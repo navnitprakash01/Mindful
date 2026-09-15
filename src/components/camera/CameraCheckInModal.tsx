@@ -14,6 +14,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { getApiUrl } from '../../lib/api';
 import {
   Camera,
   ShieldCheck,
@@ -124,7 +125,7 @@ export const CameraCheckInModal: React.FC<CameraCheckInModalProps> = ({
 
     try {
       const token = localStorage.getItem('mindful_token') || sessionStorage.getItem('mindful_token');
-      const response = await fetch('/api/camera/analyze', {
+      const response = await fetch(getApiUrl('/api/camera/analyze'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

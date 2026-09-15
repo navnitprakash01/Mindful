@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AppNotification } from '../types';
+import { getApiUrl } from '../lib/api';
 
 interface NotificationsContextType {
   notifications: AppNotification[];
@@ -46,7 +47,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!token) return;
 
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const res = await fetch(`/api/proactive/check?timezone=${encodeURIComponent(userTimezone)}`, {
+      const res = await fetch(getApiUrl(`/api/proactive/check?timezone=${encodeURIComponent(userTimezone)}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
 

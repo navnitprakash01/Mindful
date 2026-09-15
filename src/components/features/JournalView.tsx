@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { getApiUrl } from '../../lib/api';
 import {
   Sparkles,
   Save,
@@ -349,7 +350,7 @@ export const JournalView: React.FC = () => {
     }
     setIsAnalyzing(true);
     try {
-      const res = await fetch('/api/gemini/analyze', {
+      const res = await fetch(getApiUrl('/api/gemini/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ journalText: content }),

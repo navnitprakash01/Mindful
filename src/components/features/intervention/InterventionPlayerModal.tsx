@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { getApiUrl } from '../../../lib/api';
 import {
   Clock,
   Sparkles,
@@ -287,7 +288,7 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
     setAdoptError(null);
     try {
       const token = getAccessToken();
-      const res = await fetch('/api/habits/adopt-intervention', {
+      const res = await fetch(getApiUrl('/api/habits/adopt-intervention'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

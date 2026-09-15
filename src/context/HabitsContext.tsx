@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Habit } from '../types';
 import { useAuth } from './AuthContext';
 import { usePersonalState } from './StateContext';
+import { getApiUrl } from '../lib/api';
 
 export interface HabitsContextType {
   habits: Habit[];
@@ -144,7 +145,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/habits', {
+      const res = await fetch(getApiUrl('/api/habits'), {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
@@ -227,7 +228,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       if (isAlreadyCompleted) {
-        const res = await fetch(`/api/habits/${id}/uncomplete`, {
+        const res = await fetch(getApiUrl(`/api/habits/${id}/uncomplete`), {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify({ completionDate: targetDate }), // Fixed: completionDate
@@ -254,7 +255,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           });
         }
       } else {
-        const res = await fetch(`/api/habits/${id}/complete`, {
+        const res = await fetch(getApiUrl(`/api/habits/${id}/complete`), {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify({
@@ -327,7 +328,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
-      const res = await fetch('/api/habits', {
+      const res = await fetch(getApiUrl('/api/habits'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(input),
@@ -382,7 +383,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!user || !token) return true;
 
     try {
-      const res = await fetch(`/api/habits/${id}`, {
+      const res = await fetch(getApiUrl(`/api/habits/${id}`), {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -405,7 +406,7 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!user || !token) return true;
 
     try {
-      const res = await fetch(`/api/habits/${id}?purge=true`, {
+      const res = await fetch(getApiUrl(`/api/habits/${id}?purge=true`), {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });

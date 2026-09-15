@@ -5,6 +5,7 @@ import { useCompanion } from '../../hooks/useCompanion';
 import { useAuth } from '../../context/AuthContext';
 import { VoiceButton, VoiceStatus } from './VoiceButton';
 import { ClientVoiceAnalyzer } from '../../lib/voice/audioAnalyzer';
+import { getApiUrl } from '../../lib/api';
 
 export const ChatInput: React.FC = () => {
   const {
@@ -83,7 +84,7 @@ export const ChatInput: React.FC = () => {
         if (result && result.success && result.metrics) {
           // Send acoustic metrics and transcript to backend for State Engine ingestion
           const token = session?.access_token;
-          const res = await fetch('/api/voice/analyze', {
+          const res = await fetch(getApiUrl('/api/voice/analyze'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

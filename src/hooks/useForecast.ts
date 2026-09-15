@@ -13,6 +13,7 @@ import { usePersonalState } from '../context/StateContext';
 import { ForecastResult } from '../server/engine/forecastEngine/types';
 import { WeeklyDigest } from '../server/engine/digest/types';
 import { defaultForecastEngine } from '../server/engine/forecastEngine/forecastEngine';
+import { getApiUrl } from '../lib/api';
 
 export function useForecast() {
   const { session } = useAuth();
@@ -30,7 +31,7 @@ export function useForecast() {
     const token = session?.access_token;
     if (token) {
       try {
-        const res = await fetch('/api/forecast/current', {
+        const res = await fetch(getApiUrl('/api/forecast/current'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -67,7 +68,7 @@ export function useForecast() {
     if (!token) return;
 
     try {
-      const res = await fetch('/api/digest/weekly', {
+      const res = await fetch(getApiUrl('/api/digest/weekly'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

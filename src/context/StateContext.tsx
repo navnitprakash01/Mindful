@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { PersonalState, PersonalBaseline, PersonalPattern } from '../types';
 import { useAuth } from './AuthContext';
+import { getApiUrl } from '../lib/api';
 
 export interface StateContextType {
   personalState: PersonalState | null;
@@ -109,7 +110,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
-    return fetch(url, { ...options, headers });
+    return fetch(getApiUrl(url), { ...options, headers });
   }, [getAccessToken]);
 
   const refreshState = useCallback(async () => {

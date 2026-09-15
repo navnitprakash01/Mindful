@@ -15,6 +15,7 @@ import {
   FocusSessionType,
   CognitiveTelemetryWindow,
 } from '../server/engine/cognitive/types';
+import { getApiUrl } from '../lib/api';
 
 interface UseFocusSessionReturn {
   activeSession: FocusSession | null;
@@ -115,7 +116,7 @@ export function useFocusSession(): UseFocusSessionReturn {
     windowIntervalStartRef.current = now;
 
     try {
-      const response = await fetch('/api/cognitive/session/heartbeat', {
+      const response = await fetch(getApiUrl('/api/cognitive/session/heartbeat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -172,7 +173,7 @@ export function useFocusSession(): UseFocusSessionReturn {
     setIsSyncing(true);
     setError(null);
     try {
-      const response = await fetch('/api/cognitive/session/start', {
+      const response = await fetch(getApiUrl('/api/cognitive/session/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,7 +224,7 @@ export function useFocusSession(): UseFocusSessionReturn {
     setError(null);
     try {
       const totalDurationMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
-      const response = await fetch('/api/cognitive/session/complete', {
+      const response = await fetch(getApiUrl('/api/cognitive/session/complete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,7 +256,7 @@ export function useFocusSession(): UseFocusSessionReturn {
     if (!activeSession) return;
     setIsSyncing(true);
     try {
-      await fetch('/api/cognitive/session/discard', {
+      await fetch(getApiUrl('/api/cognitive/session/discard'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: activeSession.id }),

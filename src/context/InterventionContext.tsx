@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { useAuth } from './AuthContext';
 import { usePersonalState } from './StateContext';
+import { getApiUrl } from '../lib/api';
 
 export interface CompleteSessionPayload {
   postStateSnapshot?: Record<StateDimensionKey, number>;
@@ -78,7 +79,7 @@ export const InterventionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const url = textContext
         ? `/api/interventions/recommendation?textContext=${encodeURIComponent(textContext)}`
         : '/api/interventions/recommendation';
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await fetch(getApiUrl(url), { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (data.recommendation) {
@@ -93,7 +94,7 @@ export const InterventionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const refreshHistory = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch('/api/interventions/sessions?limit=20', { headers: getAuthHeaders() });
+      const res = await fetch(getApiUrl('/api/interventions/sessions?limit=20'), { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.history)) {
@@ -108,7 +109,7 @@ export const InterventionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const refreshEffectiveness = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch('/api/interventions/effectiveness', { headers: getAuthHeaders() });
+      const res = await fetch(getApiUrl('/api/interventions/effectiveness'), { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (data.effectiveness) {
@@ -161,7 +162,7 @@ export const InterventionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const startSession = useCallback(async (interventionId: string): Promise<InterventionSession | null> => {
     if (!user) return null;
     try {
-      const res = await fetch('/api/interventions/sessions', {
+      const res = await fetch(getApiUrl('/api/interventions/sessions'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ interventionId }),
@@ -186,7 +187,7 @@ export const InterventionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   ): Promise<InterventionSession | null> => {
     if (!user) return null;
     try {
-      const res = await fetch(`/api/interventions/sessions/${sessionId}/complete`, {
+      const res = await fetch(getApiUrl(`/api/interventions/sessions/${sessionId}/complete`), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),

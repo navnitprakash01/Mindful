@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getApiUrl } from '../../../lib/api';
 import {
   Watch,
   Heart,
@@ -45,7 +46,7 @@ export const WearableSettingsCard: React.FC = () => {
       if (!token) return;
 
       setIsLoading(true);
-      const res = await fetch('/api/wearable/settings', {
+      const res = await fetch(getApiUrl('/api/wearable/settings'), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -74,7 +75,7 @@ export const WearableSettingsCard: React.FC = () => {
       const token = await getAccessToken();
       if (!token) return;
 
-      const res = await fetch('/api/wearable/settings', {
+      const res = await fetch(getApiUrl('/api/wearable/settings'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ export const WearableSettingsCard: React.FC = () => {
       const token = await getAccessToken();
       if (!token) return;
 
-      const res = await fetch('/api/wearable/purge', {
+      const res = await fetch(getApiUrl('/api/wearable/purge'), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

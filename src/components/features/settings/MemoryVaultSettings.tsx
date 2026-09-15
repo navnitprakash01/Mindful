@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getApiUrl } from '../../../lib/api';
 import {
   Brain,
   Sparkles,
@@ -56,8 +57,8 @@ export const MemoryVaultSettings: React.FC = () => {
 
       setIsLoadingMemories(true);
       const [memRes, setRes] = await Promise.all([
-        fetch('/api/memory', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/proactive/settings', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(getApiUrl('/api/memory'), { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(getApiUrl('/api/proactive/settings'), { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (memRes.ok) {
@@ -90,7 +91,7 @@ export const MemoryVaultSettings: React.FC = () => {
       const token = await getAccessToken();
       if (!token) return;
 
-      const res = await fetch('/api/proactive/settings', {
+      const res = await fetch(getApiUrl('/api/proactive/settings'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +119,7 @@ export const MemoryVaultSettings: React.FC = () => {
       if (!token) return;
 
       const key = `${newCategory}_${Date.now()}`;
-      const res = await fetch('/api/memory', {
+      const res = await fetch(getApiUrl('/api/memory'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +154,7 @@ export const MemoryVaultSettings: React.FC = () => {
       const token = await getAccessToken();
       if (!token) return;
 
-      const res = await fetch(`/api/memory/${id}`, {
+      const res = await fetch(getApiUrl(`/api/memory/${id}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -177,7 +178,7 @@ export const MemoryVaultSettings: React.FC = () => {
       const token = await getAccessToken();
       if (!token) return;
 
-      const res = await fetch('/api/memory', {
+      const res = await fetch(getApiUrl('/api/memory'), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

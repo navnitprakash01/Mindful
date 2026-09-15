@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { MoodLog } from '../types';
 import { useToast } from './ToastContext';
 import { useAuth } from './AuthContext';
+import { getApiUrl } from '../lib/api';
 
 /**
  * Result returned by addMoodLog so callers can detect failure and act accordingly.
@@ -84,7 +85,7 @@ export const MoodProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsMoodLoading(true);
     try {
-      const res = await fetch('/api/moods?limit=30', {
+      const res = await fetch(getApiUrl('/api/moods?limit=30'), {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
@@ -151,7 +152,7 @@ export const MoodProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
 
       try {
-        const res = await fetch('/api/moods', {
+        const res = await fetch(getApiUrl('/api/moods'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
