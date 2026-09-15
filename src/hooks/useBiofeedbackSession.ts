@@ -38,6 +38,7 @@ export interface UseBiofeedbackSessionReturn {
   metrics: SomaticMetrics | null;
   pacingState: PacingState;
   videoRef: RefObject<HTMLVideoElement | null>;
+  stream: MediaStream | null;
   startBiofeedback: () => Promise<boolean>;
   stopBiofeedback: () => void;
   summary: BiofeedbackSessionSummary;
@@ -60,6 +61,7 @@ export function useBiofeedbackSession(
   const [status, setStatus] = useState<BiofeedbackStatus>(enabled ? 'requesting' : 'disabled');
   const [metrics, setMetrics] = useState<SomaticMetrics | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const [pacingState, setPacingState] = useState<PacingState>({
     cycleSeconds: Math.min(PACING_BOUNDS.MAX_CYCLE_SECONDS, Math.max(PACING_BOUNDS.MIN_CYCLE_SECONDS, baseCycleSeconds)),
@@ -108,6 +110,7 @@ export function useBiofeedbackSession(
       });
       mediaStreamRef.current = null;
     }
+    setStream(null);
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -147,6 +150,7 @@ export function useBiofeedbackSession(
       });
 
       mediaStreamRef.current = stream;
+      setStream(stream);
 
       // Register track.onended for disconnect handling
       stream.getTracks().forEach((track) => {
@@ -493,6 +497,14 @@ export function useBiofeedbackSession(
     };
   }, [status, startBiofeedback]);
 
+  // Re-sync video element if videoRef mounts after stream acquisition
+  useEffect(() => {
+    if (videoRef.current && stream && videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [stream]);
+
   // Clean teardown on unmount
   useEffect(() => {
     return () => {
@@ -522,6 +534,7 @@ export function useBiofeedbackSession(
     metrics,
     pacingState,
     videoRef,
+    stream,
     startBiofeedback,
     stopBiofeedback,
     summary,

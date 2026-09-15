@@ -21,7 +21,7 @@ export const HabitsView: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newCategory, setNewCategory] = useState<'mindfulness' | 'movement' | 'reflection' | 'rest'>('mindfulness');
+  const [newCategory, setNewCategory] = useState<'mindfulness' | 'movement' | 'reflection' | 'rest' | 'gratitude'>('mindfulness');
 
   const todayStr = new Date().toISOString().split('T')[0];
   const totalCompletedToday = habits.filter((h) => h.completedDates.includes(todayStr)).length;
@@ -30,18 +30,20 @@ export const HabitsView: React.FC = () => {
   const handleCreateHabit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    if (createHabit) {
-      await createHabit({
-        title: newTitle.trim(),
-        description: newDesc.trim() || undefined,
-        category: newCategory,
-        targetFrequency: 7,
-      });
+    const created = await createHabit?.({
+      title: newTitle.trim(),
+      description: newDesc.trim() || undefined,
+      category: newCategory,
+      targetFrequency: 7,
+    });
+    if (created) {
+      showToast(`"${newTitle}" added to daily rituals`);
+      setIsAddModalOpen(false);
+      setNewTitle('');
+      setNewDesc('');
+    } else {
+      showToast(`Could not add ritual. Please check details.`);
     }
-    showToast(`"${newTitle}" added to daily rituals`);
-    setIsAddModalOpen(false);
-    setNewTitle('');
-    setNewDesc('');
   };
 
   return (
@@ -244,7 +246,7 @@ export const HabitsView: React.FC = () => {
               Category
             </label>
             <div className="flex flex-wrap gap-2">
-              {(['mindfulness', 'movement', 'reflection', 'rest'] as const).map((cat) => {
+              {(['mindfulness', 'movement', 'reflection', 'rest', 'gratitude'] as const).map((cat) => {
                 const cfg = categoryConfig[cat];
                 return (
                   <button

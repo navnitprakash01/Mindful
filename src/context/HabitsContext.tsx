@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Habit } from '../types';
 import { useAuth } from './AuthContext';
 import { usePersonalState } from './StateContext';
@@ -22,78 +22,97 @@ export interface HabitsContextType {
 
 const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
 
-const initialHabits: Habit[] = [
+export const STARTER_HABITS: Habit[] = [
   {
-    id: 'habit-1',
-    title: 'Morning Grounding Meditation',
-    description: '10 minutes of unguided mindfulness before checking screen/email.',
+    id: 'starter-morning-presence',
+    title: 'Morning Presence',
+    description: 'Spend 2 minutes noticing your breathing, surroundings, and how you feel before starting the day.',
     category: 'mindfulness',
-    streak: 14,
-    bestStreak: 14,
+    streak: 0,
+    bestStreak: 0,
     targetFrequency: 7,
-    completedDates: [
-      new Date().toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0],
-    ],
+    completedDates: [],
     iconName: 'Sparkles',
+    status: 'active',
   },
   {
-    id: 'habit-2',
-    title: 'Daily Journaling Ritual',
-    description: 'Write at least 3 sentences about your emotional landscape.',
-    category: 'reflection',
-    streak: 9,
-    bestStreak: 12,
-    targetFrequency: 7,
-    completedDates: [
-      new Date().toISOString().split('T')[0],
-      new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0],
-    ],
-    iconName: 'BookOpen',
-  },
-  {
-    id: 'habit-3',
-    title: 'Evening Digital Sunset',
-    description: 'Power down blue-light devices 1 hour before bed.',
-    category: 'rest',
-    streak: 5,
-    bestStreak: 8,
-    targetFrequency: 5,
-    completedDates: [
-      new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0],
-    ],
-    iconName: 'Moon',
-  },
-  {
-    id: 'habit-4',
-    title: 'Mindful Water Intake',
-    description: 'Sip 2L of fresh water attentively throughout the day.',
+    id: 'starter-movement',
+    title: '5-Minute Movement',
+    description: 'Stand up, stretch gently, and move your body for five minutes.',
     category: 'movement',
-    streak: 12,
-    bestStreak: 15,
+    streak: 0,
+    bestStreak: 0,
     targetFrequency: 7,
-    completedDates: [
-      new Date().toISOString().split('T')[0],
-    ],
-    iconName: 'Droplets',
+    completedDates: [],
+    iconName: 'Zap',
+    status: 'active',
+  },
+  {
+    id: 'starter-mental-unload',
+    title: 'Mental Unload',
+    description: 'Write down what is occupying your mind, then choose one clear next action.',
+    category: 'reflection',
+    streak: 0,
+    bestStreak: 0,
+    targetFrequency: 7,
+    completedDates: [],
+    iconName: 'BookOpen',
+    status: 'active',
+  },
+  {
+    id: 'starter-evening-wind-down',
+    title: 'Evening Wind-Down',
+    description: 'Put away unnecessary screens and spend five quiet minutes preparing for rest.',
+    category: 'rest',
+    streak: 0,
+    bestStreak: 0,
+    targetFrequency: 7,
+    completedDates: [],
+    iconName: 'Moon',
+    status: 'active',
+  },
+  {
+    id: 'starter-daily-gratitude',
+    title: 'Daily Gratitude',
+    description: 'Write down three small things you appreciated today.',
+    category: 'gratitude',
+    streak: 0,
+    bestStreak: 0,
+    targetFrequency: 7,
+    completedDates: [],
+    iconName: 'Heart',
+    status: 'active',
   },
 ];
+
+const STORAGE_KEY = 'mindful_habits';
 
 export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, getAccessToken } = useAuth();
   const { refreshState } = usePersonalState();
   const [habits, setHabits] = useState<Habit[]>(() => {
-    if (user) return [];
     try {
-      const saved = localStorage.getItem('mindful_habits');
-      return saved ? JSON.parse(saved) : initialHabits;
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      return STARTER_HABITS;
     } catch {
-      return initialHabits;
+      return STARTER_HABITS;
     }
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const habitsRef = useRef<Habit[]>(habits);
+  useEffect(() => {
+    habitsRef.current = habits;
+  }, [habits]);
+
+  const inFlightTogglesRef = useRef<Set<string>>(new Set());
 
   const getAuthHeaders = useCallback(() => {
     const token = getAccessToken();
@@ -104,12 +123,20 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [getAccessToken]);
 
   const refreshHabits = useCallback(async () => {
-    if (!user) {
+    const token = getAccessToken();
+    if (!user || !token) {
       try {
-        const saved = localStorage.getItem('mindful_habits');
-        setHabits(saved ? JSON.parse(saved) : initialHabits);
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setHabits(parsed);
+            return;
+          }
+        }
+        setHabits(STARTER_HABITS);
       } catch {
-        setHabits(initialHabits);
+        setHabits(STARTER_HABITS);
       }
       return;
     }
@@ -123,8 +150,23 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.habits)) {
-          setHabits(data.habits);
-          localStorage.setItem('mindful_habits', JSON.stringify(data.habits));
+          if (data.habits.length > 0) {
+            setHabits(data.habits);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data.habits));
+            } catch {}
+          } else {
+            // Server returned empty list; retain any current in-memory habits if user hasn't explicitly purged
+            const current = habitsRef.current;
+            if (current.length > 0) {
+              setHabits(current);
+            } else {
+              setHabits([]);
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+              } catch {}
+            }
+          }
         }
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -135,41 +177,51 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setIsLoading(false);
     }
-  }, [user, getAuthHeaders]);
+  }, [user, getAccessToken, getAuthHeaders]);
 
   useEffect(() => {
     refreshHabits();
   }, [refreshHabits]);
 
   const toggleHabitCompletion = useCallback(async (id: string, dateStr?: string) => {
-    const targetDate = dateStr || new Date().toISOString().split('T')[0];
-    const previousHabits = [...habits];
+    if (inFlightTogglesRef.current.has(id)) {
+      return; // Rapid click debounce
+    }
 
-    const currentHabit = habits.find((h) => h.id === id);
+    const targetDate = dateStr || new Date().toISOString().split('T')[0];
+    const currentList = habitsRef.current;
+    const currentHabit = currentList.find((h) => h.id === id);
     if (!currentHabit) return;
 
+    inFlightTogglesRef.current.add(id);
+
     const isAlreadyCompleted = currentHabit.completedDates.includes(targetDate);
+    const updatedDates = isAlreadyCompleted
+      ? currentHabit.completedDates.filter((d) => d !== targetDate)
+      : [...currentHabit.completedDates, targetDate];
+    const updatedStreak = isAlreadyCompleted
+      ? Math.max(0, currentHabit.streak - 1)
+      : currentHabit.streak + 1;
 
-    // Optimistic UI update
-    setHabits((prev) =>
-      prev.map((h) => {
-        if (h.id !== id) return h;
-        const exists = h.completedDates.includes(targetDate);
-        const updatedDates = exists
-          ? h.completedDates.filter((d) => d !== targetDate)
-          : [...h.completedDates, targetDate];
-        const updatedStreak = exists ? Math.max(0, h.streak - 1) : h.streak + 1;
-        return {
-          ...h,
-          completedDates: updatedDates,
-          streak: updatedStreak,
-        };
-      })
-    );
+    const optimisticHabit: Habit = {
+      ...currentHabit,
+      completedDates: updatedDates,
+      streak: updatedStreak,
+    };
 
-    if (!user) {
-      // Local mode
-      localStorage.setItem('mindful_habits', JSON.stringify(habits));
+    // Optimistic UI update with immediate local persistence
+    setHabits((prev) => {
+      const next = prev.map((h) => (h.id === id ? optimisticHabit : h));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    const token = getAccessToken();
+    if (!user || !token) {
+      // Offline / demo mode — keep optimistic update
+      inFlightTogglesRef.current.delete(id);
       return;
     }
 
@@ -178,39 +230,67 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const res = await fetch(`/api/habits/${id}/uncomplete`, {
           method: 'POST',
           headers: getAuthHeaders(),
-          body: JSON.stringify({ date: targetDate }),
+          body: JSON.stringify({ completionDate: targetDate }), // Fixed: completionDate
         });
         if (res.ok) {
           const data = await res.json();
           if (data.habit) {
-            setHabits((prev) => prev.map((h) => (h.id === id ? data.habit : h)));
+            setHabits((prev) => {
+              const next = prev.map((h) => (h.id === id ? { ...h, ...data.habit } : h));
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+              } catch {}
+              return next;
+            });
           }
-        } else {
-          setHabits(previousHabits);
+        } else if (res.status === 400 || res.status === 403) {
+          // Revert only if server rejected with deterministic client/auth error
+          setHabits((prev) => {
+            const next = prev.map((h) => (h.id === id ? currentHabit : h));
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         }
       } else {
         const res = await fetch(`/api/habits/${id}/complete`, {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify({
+            completionDate: targetDate,
             completedAt: `${targetDate}T12:00:00.000Z`,
           }),
         });
         if (res.ok) {
           const data = await res.json();
           if (data.habit) {
-            setHabits((prev) => prev.map((h) => (h.id === id ? data.habit : h)));
+            setHabits((prev) => {
+              const next = prev.map((h) => (h.id === id ? { ...h, ...data.habit } : h));
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+              } catch {}
+              return next;
+            });
           }
-          // Refresh PersonalState to reflect the new habit_action signal
           refreshState?.().catch(() => {});
-        } else {
-          setHabits(previousHabits);
+        } else if (res.status === 400 || res.status === 403) {
+          // Revert only if server rejected with deterministic client/auth error
+          setHabits((prev) => {
+            const next = prev.map((h) => (h.id === id ? currentHabit : h));
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         }
       }
     } catch {
-      setHabits(previousHabits);
+      // Network failure — maintain optimistic update locally
+    } finally {
+      inFlightTogglesRef.current.delete(id);
     }
-  }, [habits, user, getAuthHeaders, refreshState]);
+  }, [user, getAccessToken, getAuthHeaders, refreshState]);
 
   const createHabit = useCallback(async (input: {
     title: string;
@@ -219,26 +299,31 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     targetFrequency?: number;
     restDaysAllowed?: number;
   }): Promise<Habit | null> => {
-    if (!user) {
-      const localHabit: Habit = {
-        id: `local-${Date.now()}`,
-        title: input.title,
-        description: input.description || '',
-        category: input.category || 'mindfulness',
-        streak: 0,
-        bestStreak: 0,
-        targetFrequency: input.targetFrequency || 7,
-        restDaysAllowed: input.restDaysAllowed ?? 1,
-        completedDates: [],
-        iconName: 'Sparkles',
-        status: 'active',
-      };
+    const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const newHabit: Habit = {
+      id: tempId,
+      title: input.title.trim(),
+      description: input.description?.trim() || '',
+      category: input.category || 'mindfulness',
+      streak: 0,
+      bestStreak: 0,
+      targetFrequency: input.targetFrequency || 7,
+      restDaysAllowed: input.restDaysAllowed ?? 1,
+      completedDates: [],
+      iconName: 'Sparkles',
+      status: 'active',
+    };
+
+    const token = getAccessToken();
+    if (!user || !token) {
       setHabits((prev) => {
-        const updated = [localHabit, ...prev];
-        localStorage.setItem('mindful_habits', JSON.stringify(updated));
-        return updated;
+        const next = [newHabit, ...prev];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
       });
-      return localHabit;
+      return newHabit;
     }
 
     try {
@@ -247,68 +332,88 @@ export const HabitsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         headers: getAuthHeaders(),
         body: JSON.stringify(input),
       });
+
       if (res.ok) {
         const data = await res.json();
         if (data.habit) {
-          setHabits((prev) => [data.habit, ...prev]);
+          setHabits((prev) => {
+            const next = [data.habit, ...prev];
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
           return data.habit;
         }
       }
-      return null;
+
+      // If server returned non-ok (transient / fallback), persist local habit
+      setHabits((prev) => {
+        const next = [newHabit, ...prev];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      return newHabit;
     } catch {
-      return null;
+      // Network error -> persist local habit
+      setHabits((prev) => {
+        const next = [newHabit, ...prev];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      return newHabit;
     }
-  }, [user, getAuthHeaders]);
+  }, [user, getAccessToken, getAuthHeaders]);
 
   const archiveHabit = useCallback(async (id: string): Promise<boolean> => {
-    if (!user) {
-      setHabits((prev) => {
-        const updated = prev.filter((h) => h.id !== id);
-        localStorage.setItem('mindful_habits', JSON.stringify(updated));
-        return updated;
-      });
-      return true;
-    }
+    setHabits((prev) => {
+      const next = prev.filter((h) => h.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    const token = getAccessToken();
+    if (!user || !token) return true;
 
     try {
       const res = await fetch(`/api/habits/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      if (res.ok) {
-        setHabits((prev) => prev.filter((h) => h.id !== id));
-        return true;
-      }
-      return false;
+      return res.ok;
     } catch {
       return false;
     }
-  }, [user, getAuthHeaders]);
+  }, [user, getAccessToken, getAuthHeaders]);
 
   const deleteHabit = useCallback(async (id: string): Promise<boolean> => {
-    if (!user) {
-      setHabits((prev) => {
-        const updated = prev.filter((h) => h.id !== id);
-        localStorage.setItem('mindful_habits', JSON.stringify(updated));
-        return updated;
-      });
-      return true;
-    }
+    setHabits((prev) => {
+      const next = prev.filter((h) => h.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    const token = getAccessToken();
+    if (!user || !token) return true;
 
     try {
       const res = await fetch(`/api/habits/${id}?purge=true`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      if (res.ok) {
-        setHabits((prev) => prev.filter((h) => h.id !== id));
-        return true;
-      }
-      return false;
+      return res.ok;
     } catch {
       return false;
     }
-  }, [user, getAuthHeaders]);
+  }, [user, getAccessToken, getAuthHeaders]);
 
   return (
     <HabitsContext.Provider

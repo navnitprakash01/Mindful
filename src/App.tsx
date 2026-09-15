@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useRef, useEffect, Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
@@ -18,8 +18,8 @@ const JournalView = lazy(() => import('./components/features/JournalView').then(
 const MoodTrackingView = lazy(() => import('./components/features/MoodTrackingView').then(m => ({ default: m.MoodTrackingView })));
 const AICompanionView = lazy(() => import('./components/features/AICompanionView').then(m => ({ default: m.AICompanionView })));
 const HabitsView = lazy(() => import('./components/features/HabitsView').then(m => ({ default: m.HabitsView })));
-const BodyCheckView = lazy(() => import('./components/features/BodyCheckView').then(m => ({ default: m.BodyCheckView })));
 const AnalyticsView = lazy(() => import('./components/features/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+const BodyCheckView = lazy(() => import('./components/features/BodyCheckView').then(m => ({ default: m.BodyCheckView })));
 const SettingsView = lazy(() => import('./components/features/SettingsView').then(m => ({ default: m.SettingsView })));
 const ProfileView = lazy(() => import('./components/features/ProfileView').then(m => ({ default: m.ProfileView })));
 
@@ -32,9 +32,18 @@ const ViewSkeleton = () => (
 );
 
 const AppContent: React.FC = () => {
-  const { currentView, toastMessage } = useApp();
+  const { currentView, toastMessage, startNewConversation } = useApp();
   const { isAuthenticated, isLoading, user } = useAuth();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const previousViewRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // When entering Companion from another tab, open a fresh new conversation
+    if (previousViewRef.current !== null && previousViewRef.current !== 'companion' && currentView === 'companion') {
+      startNewConversation();
+    }
+    previousViewRef.current = currentView;
+  }, [currentView, startNewConversation]);
 
   // If AuthContext is loading, render the ViewSkeleton
   if (isLoading) {
@@ -92,7 +101,7 @@ const AppContent: React.FC = () => {
     <div
       className={`min-h-screen relative font-body-md text-on-surface selection:bg-primary/10 select-none ${
         isCompanion
-          ? 'mobile-companion-shell lg:min-h-screen lg:h-auto lg:overflow-visible lg:block'
+          ? 'mobile-companion-shell'
           : ''
       }`}
     >
@@ -106,7 +115,7 @@ const AppContent: React.FC = () => {
       <main
         className={`relative z-10 ${
           isCompanion
-            ? 'app-main flex-1 min-h-0 flex flex-col overflow-hidden lg:flex-none lg:overflow-visible lg:h-auto'
+            ? 'app-main flex-1 min-h-0 flex flex-col overflow-hidden lg:pt-20'
             : ''
         }`}
       >

@@ -87,15 +87,9 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Post-check-in reflective inputs
-  const [postRatings, setPostRatings] = useState<Record<StateDimensionKey, number>>({
-    mood: 70,
-    stress: 30,
-    fatigue: 35,
-    energy: 65,
-    focus: 70,
-    cognitiveLoad: 35,
-  });
+  // Post-check-in reflective inputs (user self-report)
+  const [postRatings, setPostRatings] = useState<Partial<Record<StateDimensionKey, number>>>({});
+  const [ratedDimensions, setRatedDimensions] = useState<Partial<Record<StateDimensionKey, boolean>>>({});
   const [usefulness, setUsefulness] = useState<number>(4);
   const [feedbackNotes, setFeedbackNotes] = useState<string>('');
   const { getAccessToken } = useAuth();
@@ -147,21 +141,13 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       setBiofeedbackOptIn(false);
       setCameraNotice(null);
       biofeedback.stopBiofeedback();
-      if (personalState) {
-        setPostRatings({
-          mood: personalState.mood,
-          stress: personalState.stress,
-          fatigue: personalState.fatigue,
-          energy: personalState.energy,
-          focus: personalState.focus,
-          cognitiveLoad: personalState.cognitiveLoad,
-        });
-      }
+      setPostRatings({});
+      setRatedDimensions({});
     } else {
       biofeedback.stopBiofeedback();
       if (timerRef.current) clearTimeout(timerRef.current);
     }
-  }, [isOpen, activeIntervention?.id, personalState]);
+  }, [isOpen, activeIntervention?.id]);
 
   // Sync step timer
   useEffect(() => {
@@ -172,6 +158,16 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
       setIsTimerRunning(true);
     }
   }, [stage, currentStepIndex, activeIntervention]);
+
+  // Ensure video element receives the live stream whenever active
+  useEffect(() => {
+    if (biofeedbackOptIn && biofeedback.stream && biofeedback.videoRef.current) {
+      if (biofeedback.videoRef.current.srcObject !== biofeedback.stream) {
+        biofeedback.videoRef.current.srcObject = biofeedback.stream;
+        biofeedback.videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [biofeedback.stream, biofeedbackOptIn, stage]);
 
   // Handle countdown interval
   useEffect(() => {
@@ -255,11 +251,21 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
   };
 
   const handleCompleteReflection = async () => {
-    if (!activeSession) return;
+    if (!activeSession || !activeIntervention) return;
     setIsSaving(true);
     try {
+      // Gather only explicitly user-rated post dimensions
+      const measuredPostSnapshot: Partial<Record<StateDimensionKey, number>> = {};
+      let hasAnyMeasurement = false;
+      for (const dim of activeIntervention.targetDimensions) {
+        if (ratedDimensions[dim] && typeof postRatings[dim] === 'number') {
+          measuredPostSnapshot[dim] = postRatings[dim]!;
+          hasAnyMeasurement = true;
+        }
+      }
+
       const finished = await completeSession(activeSession.id, {
-        postStateSnapshot: postRatings,
+        postStateSnapshot: hasAnyMeasurement ? (measuredPostSnapshot as Record<StateDimensionKey, number>) : undefined,
         perceivedUsefulness: usefulness,
         userFeedback: feedbackNotes.trim() || undefined,
         durationSeconds: activeIntervention.durationMinutes * 60,
@@ -548,9 +554,6 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                 exit={{ opacity: 0, scale: 0.98 }}
                 className="space-y-6 text-center py-2"
               >
-                {/* Off-screen hidden video for client-side processing */}
-                <video ref={biofeedback.videoRef as any} style={{ display: 'none' }} playsInline muted />
-
                 {/* Camera Notice if fallback happened */}
                 {cameraNotice && (
                   <div className="p-3 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-[rgba(232,234,246,0.70)]">
@@ -584,6 +587,32 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                     )}
                   </button>
                 </div>
+
+                {/* Live Camera Preview Container — Only rendered when camera is active */}
+                {biofeedbackOptIn && (
+                  <div
+                    data-testid="camera-preview-container"
+                    className="relative mx-auto w-48 sm:w-56 aspect-video rounded-2xl overflow-hidden border border-[rgba(255,255,255,0.12)] bg-[rgba(13,15,26,0.85)] shadow-[0_8px_24px_rgba(0,0,0,0.50)]"
+                  >
+                    <video
+                      ref={biofeedback.videoRef as any}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                    {/* Live Camera Active Indicator Badge */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[rgba(13,15,26,0.75)] backdrop-blur-md border border-[rgba(255,255,255,0.10)] text-[10px] font-medium text-[rgba(232,234,246,0.85)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#34d399] animate-pulse" />
+                      <span>Camera active</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hidden video element when camera is disabled, keeping ref mounted for graceful toggling */}
+                {!biofeedbackOptIn && (
+                  <video ref={biofeedback.videoRef as any} className="hidden" playsInline muted />
+                )}
 
                 {/* Somatic Pacer Visual or Standard Circular Timer */}
                 {biofeedbackOptIn && isStepPacingCompatible(currentStep.title, currentStep.instruction, activeIntervention.category) ? (
@@ -680,33 +709,127 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                   </div>
                 </div>
 
-                {/* Primary Target Dimension Sliders */}
+                {/* Pre-Session Baseline Reference */}
+                <div className="p-3.5 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] space-y-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(232,234,246,0.45)]">
+                    Pre-Reset Baseline
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-[rgba(232,234,246,0.70)]">
+                    {activeIntervention.targetDimensions.map((dim) => {
+                      const preVal = activeSession?.preStateSnapshot?.[dim] ?? personalState?.[dim];
+                      return (
+                        <span key={dim} className="capitalize">
+                          {dim}:{' '}
+                          <span className="text-[#c0c4ea] font-semibold">
+                            {typeof preVal === 'number' ? `${preVal} / 100` : 'Not established'}
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Primary Target Dimension Sliders (User Self-Report) */}
                 <div className="space-y-4 p-4 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)]">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[rgba(232,234,246,0.60)]">
-                    Current Felt State
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-[rgba(232,234,246,0.75)]">
+                        Post-Reset Felt State Self-Report
+                      </div>
+                      <div className="text-[11px] text-[rgba(232,234,246,0.45)] mt-0.5">
+                        Rate how you feel now. Adjust sliders to record your post-reset shift.
+                      </div>
+                    </div>
+                    {Object.values(ratedDimensions).some(Boolean) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRatedDimensions({});
+                          setPostRatings({});
+                        }}
+                        className="text-[11px] text-[rgba(232,234,246,0.40)] hover:text-white underline cursor-pointer"
+                      >
+                        Reset All
+                      </button>
+                    )}
                   </div>
                   {activeIntervention.targetDimensions.map((dim) => {
                     const label = dim.charAt(0).toUpperCase() + dim.slice(1);
-                    const val = postRatings[dim] ?? 50;
+                    const isRated = Boolean(ratedDimensions[dim]);
+                    const val = postRatings[dim];
+                    const preVal = activeSession?.preStateSnapshot?.[dim] ?? personalState?.[dim];
+                    const sliderValue =
+                      isRated && typeof val === 'number'
+                        ? val
+                        : typeof preVal === 'number'
+                        ? preVal
+                        : 50;
+
                     return (
-                      <div key={dim} className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[rgba(232,234,246,0.80)] capitalize">{label}</span>
-                          <span className="font-mono text-[#c0c4ea] font-semibold">{val} / 100</span>
+                      <div
+                        key={dim}
+                        className="space-y-1.5 p-2.5 rounded-xl bg-[rgba(255,255,255,0.015)] border border-[rgba(255,255,255,0.03)]"
+                      >
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-[rgba(232,234,246,0.85)] capitalize font-medium">{label}</span>
+                          <div className="flex items-center gap-2">
+                            {isRated && typeof val === 'number' ? (
+                              <>
+                                <span className="font-mono text-[#c0c4ea] font-semibold">{val} / 100</span>
+                                {typeof preVal === 'number' && (
+                                  <span className="text-[10px] font-mono text-[rgba(232,234,246,0.45)]">
+                                    ({val - preVal > 0 ? `+${val - preVal}` : val - preVal} from baseline)
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRatedDimensions((prev) => ({ ...prev, [dim]: false }));
+                                    setPostRatings((prev) => {
+                                      const next = { ...prev };
+                                      delete next[dim];
+                                      return next;
+                                    });
+                                  }}
+                                  className="text-[10px] text-[rgba(232,234,246,0.35)] hover:text-rose-300 underline cursor-pointer ml-1"
+                                >
+                                  Clear
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[11px] font-mono text-[rgba(232,234,246,0.40)] italic">
+                                Not measured
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <input
                           type="range"
                           min={0}
                           max={100}
-                          value={val}
-                          onChange={(e) =>
+                          value={sliderValue}
+                          onChange={(e) => {
+                            const num = parseInt(e.target.value, 10);
                             setPostRatings((prev) => ({
                               ...prev,
-                              [dim]: parseInt(e.target.value, 10),
-                            }))
-                          }
-                          className="w-full h-1.5 bg-[rgba(255,255,255,0.10)] rounded-lg appearance-none cursor-pointer accent-[#c0c4ea]"
+                              [dim]: num,
+                            }));
+                            setRatedDimensions((prev) => ({
+                              ...prev,
+                              [dim]: true,
+                            }));
+                          }}
+                          className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer ${
+                            isRated
+                              ? 'bg-[rgba(192,196,234,0.35)] accent-[#c0c4ea]'
+                              : 'bg-[rgba(255,255,255,0.08)] accent-zinc-500 opacity-60 hover:opacity-90'
+                          }`}
                         />
+                        {!isRated && (
+                          <div className="text-[10px] text-[rgba(232,234,246,0.30)] text-right">
+                            Slide to record post-reset rating
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -745,22 +868,43 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                     Session Outcome Recorded
                   </h3>
                   <p className="text-xs text-[rgba(232,234,246,0.50)]">
-                    Your Personal State and learning model have been calibrated.
+                    {completedSession.postStateSnapshot
+                      ? 'Your Personal State and learning model have been calibrated with your post-reset reflection.'
+                      : 'Your session has been logged and helpfulness rating recorded.'}
                   </p>
                 </div>
 
-                {/* Deltas Card */}
-                {completedSession.dimensionDeltas && (
-                  <div className="p-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] space-y-3">
+                {/* Post-Reset Felt State & Observed Shifts */}
+                <div className="p-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] space-y-3">
+                  <div className="flex items-center justify-between">
                     <span className="text-xs uppercase tracking-wider text-[rgba(232,234,246,0.50)] font-medium">
-                      Observed Dimension Shifts
+                      Post-Reset State & Shifts
                     </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(completedSession.dimensionDeltas).map(([dim, rawDelta]) => {
-                        const delta = typeof rawDelta === 'number' ? rawDelta : Number(rawDelta || 0);
-                        const isZero = delta === 0;
-                        const higherGood = HIGHER_IS_POSITIVE[dim as StateDimensionKey] ?? true;
-                        const isFavorable = higherGood ? delta > 0 : delta < 0;
+                    {typeof completedSession.perceivedUsefulness === 'number' && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-[rgba(232,234,246,0.50)] mr-1">Helpfulness:</span>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3 h-3 ${
+                              star <= (completedSession.perceivedUsefulness || 0)
+                                ? 'fill-[#fbbf24] text-[#fbbf24]'
+                                : 'text-zinc-700'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {activeIntervention.targetDimensions.map((dim) => {
+                      const postVal = completedSession.postStateSnapshot?.[dim];
+                      const preVal = completedSession.preStateSnapshot?.[dim];
+                      const rawDelta = completedSession.dimensionDeltas?.[dim];
+                      const hasPostVal = typeof postVal === 'number';
+
+                      if (!hasPostVal) {
                         return (
                           <div
                             key={dim}
@@ -769,8 +913,44 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                             <span className="text-xs text-[rgba(232,234,246,0.75)] capitalize">
                               {dim}
                             </span>
+                            <span className="text-xs font-mono text-[rgba(232,234,246,0.40)] italic">
+                              Not measured
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      const delta =
+                        typeof rawDelta === 'number'
+                          ? rawDelta
+                          : typeof preVal === 'number'
+                          ? Number((postVal - preVal).toFixed(1))
+                          : 0;
+                      const isZero = delta === 0;
+                      const higherGood = HIGHER_IS_POSITIVE[dim] ?? true;
+                      const isFavorable = higherGood ? delta > 0 : delta < 0;
+
+                      return (
+                        <div
+                          key={dim}
+                          className="p-3 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.04)] flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="text-xs text-[rgba(232,234,246,0.90)] font-medium capitalize">
+                              {dim}
+                            </div>
+                            {typeof preVal === 'number' && (
+                              <div className="text-[10px] text-[rgba(232,234,246,0.45)]">
+                                Pre: {preVal} / 100
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-mono font-semibold text-[#c0c4ea]">
+                              {postVal} / 100
+                            </div>
                             <div
-                              className={`flex items-center gap-1 text-xs font-mono font-semibold ${
+                              className={`flex items-center justify-end gap-0.5 text-[11px] font-mono font-semibold ${
                                 isZero
                                   ? 'text-zinc-400'
                                   : isFavorable
@@ -778,17 +958,51 @@ export const InterventionPlayerModal: React.FC<InterventionPlayerModalProps> = (
                                   : 'text-[#f4a8c0]'
                               }`}
                             >
-                              {delta < 0 ? (
-                                <TrendingDown className="w-3.5 h-3.5" />
-                              ) : (
-                                <TrendingUp className="w-3.5 h-3.5" />
-                              )}
+                              {!isZero &&
+                                (delta < 0 ? (
+                                  <TrendingDown className="w-3 h-3" />
+                                ) : (
+                                  <TrendingUp className="w-3 h-3" />
+                                ))}
                               {delta > 0 ? `+${delta}` : delta} pts
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {!completedSession.postStateSnapshot && (
+                    <p className="text-[11px] text-center text-[rgba(232,234,246,0.40)] italic py-1">
+                      No post-intervention state self-report was recorded for this session.
+                    </p>
+                  )}
+                </div>
+
+                {/* Biofeedback Summary if camera was used */}
+                {completedSession.biofeedbackSummary?.biofeedbackAssisted && (
+                  <div className="p-4 rounded-2xl bg-[rgba(108,114,232,0.06)] border border-[rgba(108,114,232,0.18)] space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#c0c4ea] uppercase tracking-wider">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#6ee7b7]" />
+                      Somatic Biofeedback Pacing Summary
                     </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-[rgba(232,234,246,0.75)]">
+                      <div className="p-2.5 rounded-xl bg-[rgba(255,255,255,0.02)]">
+                        <div className="text-[10px] text-[rgba(232,234,246,0.45)] uppercase">Stillness Score</div>
+                        <div className="font-mono text-sm font-semibold text-[#6ee7b7]">
+                          {completedSession.biofeedbackSummary.somaticStillnessScore ?? 85}%
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[rgba(255,255,255,0.02)]">
+                        <div className="text-[10px] text-[rgba(232,234,246,0.45)] uppercase">Pacing Cycle</div>
+                        <div className="font-mono text-sm font-semibold text-[#c0c4ea]">
+                          {completedSession.biofeedbackSummary.pacingCycleSeconds ?? 8.0}s
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-[rgba(232,234,246,0.45)] italic">
+                      Camera biofeedback adapts pacing only and is not converted to emotional or fatigue scores.
+                    </p>
                   </div>
                 )}
 

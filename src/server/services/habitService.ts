@@ -25,6 +25,7 @@ import {
   HabitCompletionInput,
   HabitCompletionResult,
   HabitCategory,
+  PreferredTimeWindow,
   validateCreateHabitInput,
   validateUpdateHabitInput,
   validateHabitCompletionInput,
@@ -33,8 +34,60 @@ import { calculateCompassionateStreak } from '../engine/habits/streak';
 
 const TABLE_HABITS = 'user_habits';
 
+export const STARTER_HABIT_TEMPLATES: Array<{
+  title: string;
+  category: HabitCategory;
+  description: string;
+  targetFrequency: number;
+  preferredTimeWindow: PreferredTimeWindow;
+  durationMinutes?: number;
+}> = [
+  {
+    title: 'Morning Presence',
+    category: 'mindfulness',
+    description: 'Spend 2 minutes noticing your breathing, surroundings, and how you feel before starting the day.',
+    targetFrequency: 7,
+    preferredTimeWindow: 'morning',
+    durationMinutes: 2,
+  },
+  {
+    title: '5-Minute Movement',
+    category: 'movement',
+    description: 'Stand up, stretch gently, and move your body for five minutes.',
+    targetFrequency: 7,
+    preferredTimeWindow: 'midday',
+    durationMinutes: 5,
+  },
+  {
+    title: 'Mental Unload',
+    category: 'reflection',
+    description: 'Write down what is occupying your mind, then choose one clear next action.',
+    targetFrequency: 7,
+    preferredTimeWindow: 'evening',
+    durationMinutes: 5,
+  },
+  {
+    title: 'Evening Wind-Down',
+    category: 'rest',
+    description: 'Put away unnecessary screens and spend five quiet minutes preparing for rest.',
+    targetFrequency: 7,
+    preferredTimeWindow: 'evening',
+    durationMinutes: 5,
+  },
+  {
+    title: 'Daily Gratitude',
+    category: 'gratitude',
+    description: 'Write down three small things you appreciated today.',
+    targetFrequency: 7,
+    preferredTimeWindow: 'anytime',
+    durationMinutes: 3,
+  },
+];
+
 // In-memory store for offline tests and zero-budget resilience
 const inMemoryHabits = new Map<string, HabitDefinition>(); // habitId -> HabitDefinition
+const seededUserTracker = new Set<string>(); // Tracks users that have been initialized/seeded
+const activeCompletionPromises = new Map<string, Promise<HabitCompletionResult>>();
 
 /**
  * Timeout wrapper for database requests to guarantee zero hanging on unmigrated / offline DB
@@ -165,6 +218,7 @@ export const habitService = {
 
   /**
    * Lists all habits for a user, recalculating streaks dynamically.
+   * If a user has no habits and hasn't been initialized, seeds the 5 canonical starter rituals.
    */
   async listHabits(userId: string, includeArchived: boolean = false): Promise<HabitDefinition[]> {
     if (!isValidUuid(userId)) {
@@ -186,8 +240,14 @@ export const habitService = {
       }
 
       const { data, error } = await withDbTimeout(query);
-      if (!error && data) {
+      if (!error && Array.isArray(data)) {
         userHabits = data.map(rowToHabit);
+      } else {
+        userHabits = Array.from(inMemoryHabits.values()).filter((h) => {
+          if (h.userId !== userId) return false;
+          if (!includeArchived && h.status === 'archived') return false;
+          return true;
+        });
       }
     } catch {
       // In-memory fallback
@@ -196,6 +256,58 @@ export const habitService = {
         if (!includeArchived && h.status === 'archived') return false;
         return true;
       });
+    }
+
+    // Auto-seed starter habits if user has 0 habits and has not been initialized
+    const totalUserHabitsInMemory = Array.from(inMemoryHabits.values()).filter((h) => h.userId === userId);
+    if (userHabits.length === 0 && totalUserHabitsInMemory.length === 0 && !seededUserTracker.has(userId)) {
+      seededUserTracker.add(userId);
+      const seeded: HabitDefinition[] = [];
+      const nowIso = new Date().toISOString();
+      for (const tpl of STARTER_HABIT_TEMPLATES) {
+        const habitId = randomUUID();
+        const habit: HabitDefinition = {
+          id: habitId,
+          userId,
+          title: tpl.title,
+          description: tpl.description,
+          category: tpl.category,
+          targetFrequency: tpl.targetFrequency,
+          preferredTimeWindow: tpl.preferredTimeWindow,
+          durationMinutes: tpl.durationMinutes,
+          status: 'active',
+          streak: 0,
+          bestStreak: 0,
+          completedDates: [],
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+        inMemoryHabits.set(habitId, habit);
+        seeded.push(habit);
+        try {
+          await withDbTimeout(
+            supabase.from(TABLE_HABITS).insert({
+              id: habit.id,
+              user_id: habit.userId,
+              title: habit.title,
+              description: habit.description,
+              category: habit.category,
+              target_frequency: habit.targetFrequency,
+              preferred_time_window: habit.preferredTimeWindow,
+              duration_minutes: habit.durationMinutes,
+              status: habit.status,
+              completed_dates: habit.completedDates,
+              streak: habit.streak,
+              best_streak: habit.bestStreak,
+              created_at: habit.createdAt,
+              updated_at: habit.updatedAt,
+            })
+          );
+        } catch {
+          // DB error or test env -> in-memory persists
+        }
+      }
+      userHabits = seeded;
     }
 
     // Recalculate streak dynamically relative to today
@@ -236,6 +348,11 @@ export const habitService = {
 
       if (!error && data) {
         habit = rowToHabit(data);
+      } else {
+        const found = inMemoryHabits.get(habitId);
+        if (found && found.userId === userId) {
+          habit = found;
+        }
       }
     } catch {
       const found = inMemoryHabits.get(habitId);
@@ -386,6 +503,30 @@ export const habitService = {
    * Dispatches a canonical 'habit_action' signal to StateService.
    */
   async completeHabit(
+    userId: string,
+    habitId: string,
+    input?: HabitCompletionInput
+  ): Promise<HabitCompletionResult> {
+    const lockKey = `${userId}:${habitId}`;
+    const inFlight = activeCompletionPromises.get(lockKey);
+    if (inFlight) {
+      try {
+        await inFlight;
+      } catch {}
+    }
+
+    const executionPromise = this._executeCompleteHabit(userId, habitId, input);
+    activeCompletionPromises.set(lockKey, executionPromise);
+    try {
+      return await executionPromise;
+    } finally {
+      if (activeCompletionPromises.get(lockKey) === executionPromise) {
+        activeCompletionPromises.delete(lockKey);
+      }
+    }
+  },
+
+  async _executeCompleteHabit(
     userId: string,
     habitId: string,
     input?: HabitCompletionInput
@@ -566,6 +707,7 @@ export const habitService = {
     }
 
     inMemoryHabits.delete(habitId);
+    seededUserTracker.add(userId); // Prevent auto-reseeding immediately after user deletes a habit
 
     try {
       await withDbTimeout(
@@ -630,6 +772,8 @@ export const habitService = {
       throw new Error('Unauthorized');
     }
 
+    seededUserTracker.add(userId);
+
     let deletedHabits = 0;
     for (const [id, habit] of inMemoryHabits.entries()) {
       if (habit.userId === userId) {
@@ -661,5 +805,6 @@ export const habitService = {
    */
   _resetMemoryStore(): void {
     inMemoryHabits.clear();
+    seededUserTracker.clear();
   },
 };

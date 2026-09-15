@@ -7,7 +7,7 @@
  * 2. Header.tsx desktop navigation includes 'Body Check' -> 'body_check'
  * 3. BottomNav.tsx mobile navigation includes 'Body Check' -> 'body_check'
  * 4. App.tsx routes 'body_check' to lazy BodyCheckView
- * 5. AnalyticsView.tsx removes embedded player and links to 'body_check'
+ * 5. AnalyticsView.tsx focuses purely on insights intelligence without body_check redirect card
  * 6. BodyCheckView component structure, hero card, protocols, and history
  * 7. InterventionPlayerModal 100dvh viewport constraint and flex layout (no vertical clipping)
  * 8. Pre-session camera consent flow (Option to start without camera vs enable feedback)
@@ -59,14 +59,13 @@ describe('Body Check Architecture & Surface Verification', () => {
     assert.match(appContent, /case 'body_check':\s*return <BodyCheckView \/>;/, 'App.tsx renderView must handle body_check');
   });
 
-  it('5. AnalyticsView.tsx removes embedded runner and provides clean Next Step card linking to body_check', () => {
+  it('5. AnalyticsView.tsx focuses purely on insights intelligence and removes redirect card to body_check', () => {
     const analyticsContent = fs.readFileSync(analyticsPath, 'utf8');
     // Ensure embedded modal is removed
     assert.doesNotMatch(analyticsContent, /<InterventionPlayerModal/, 'AnalyticsView must not embed InterventionPlayerModal');
-    // Ensure Next Step card navigates to body_check
-    assert.match(analyticsContent, /setCurrentView\('body_check'\)/, 'AnalyticsView must have button opening body_check');
-    assert.match(analyticsContent, /Your Next Step/i, 'AnalyticsView must have Your Next Step label');
-    assert.match(analyticsContent, /Postural & Sensory Reset/i, 'AnalyticsView must mention Postural & Sensory Reset');
+    // Ensure Next Step redirect card to body_check is cleanly removed
+    assert.doesNotMatch(analyticsContent, /setCurrentView\('body_check'\)/, 'AnalyticsView must not redirect to body_check');
+    assert.doesNotMatch(analyticsContent, /Postural & Sensory Reset/i, 'AnalyticsView must not contain Postural & Sensory Reset redirect');
   });
 
   it('6. BodyCheckView.tsx renders dedicated surface elements, hero reset, and catalog', () => {

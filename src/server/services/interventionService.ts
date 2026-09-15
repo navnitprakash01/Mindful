@@ -21,7 +21,7 @@ import {
 } from '../engine/interventionEngine';
 import { stateService } from './stateService';
 import { patternService } from './patternService';
-import { StateDimensionKey, WellnessSignal } from '../engine/types';
+import { StateDimensionKey, WellnessSignal, DimensionEstimate } from '../engine/types';
 
 const TABLE_INTERVENTION_SESSIONS = 'intervention_sessions';
 
@@ -230,23 +230,26 @@ export const interventionService = {
       return session;
     }
 
-    // Determine post-state snapshot
-    let postStateSnapshot = payload.postStateSnapshot;
-    if (!postStateSnapshot) {
-      const currentState = await stateService.getCurrentState(userId).catch(() => null);
-      postStateSnapshot = {
-        mood: currentState?.mood ?? session.preStateSnapshot.mood,
-        stress: currentState?.stress ?? session.preStateSnapshot.stress,
-        fatigue: currentState?.fatigue ?? session.preStateSnapshot.fatigue,
-        energy: currentState?.energy ?? session.preStateSnapshot.energy,
-        focus: currentState?.focus ?? session.preStateSnapshot.focus,
-        cognitiveLoad: currentState?.cognitiveLoad ?? session.preStateSnapshot.cognitiveLoad,
-      };
+    // Determine post-state snapshot: only retain actual measured dimensions without fabrication
+    let postStateSnapshot: Record<StateDimensionKey, number> | undefined = undefined;
+    if (payload.postStateSnapshot && typeof payload.postStateSnapshot === 'object') {
+      const sanitized: Partial<Record<StateDimensionKey, number>> = {};
+      for (const [dimKey, dimVal] of Object.entries(payload.postStateSnapshot)) {
+        if (typeof dimVal === 'number' && Number.isFinite(dimVal) && dimVal >= 0 && dimVal <= 100) {
+          sanitized[dimKey as StateDimensionKey] = Math.round(dimVal);
+        }
+      }
+      if (Object.keys(sanitized).length > 0) {
+        postStateSnapshot = sanitized as Record<StateDimensionKey, number>;
+      }
     }
 
-    // Compute mathematical deltas: post - pre
-    const dimensionDeltas = computeSessionDeltas(session.preStateSnapshot, postStateSnapshot);
+    // Compute mathematical deltas: post - pre (only for measured dimensions)
+    let dimensionDeltas: Partial<Record<StateDimensionKey, number>> | undefined = postStateSnapshot
+      ? computeSessionDeltas(session.preStateSnapshot, postStateSnapshot)
+      : undefined;
     if (payload.biofeedbackSummary) {
+      dimensionDeltas = dimensionDeltas || {};
       (dimensionDeltas as any).biofeedback = payload.biofeedbackSummary;
     }
     const completedAt = new Date().toISOString();
@@ -260,6 +263,7 @@ export const interventionService = {
       dimensionDeltas,
       perceivedUsefulness: payload.perceivedUsefulness,
       userFeedback: payload.userFeedback,
+      biofeedbackSummary: payload.biofeedbackSummary ?? session.biofeedbackSummary,
     };
 
     // Update memory
@@ -281,8 +285,8 @@ export const interventionService = {
             status: 'completed',
             completed_at: updatedSession.completedAt,
             duration_seconds: updatedSession.durationSeconds,
-            post_state_snapshot: updatedSession.postStateSnapshot,
-            dimension_deltas: updatedSession.dimensionDeltas,
+            post_state_snapshot: updatedSession.postStateSnapshot ?? null,
+            dimension_deltas: updatedSession.dimensionDeltas ?? null,
             perceived_usefulness: updatedSession.perceivedUsefulness,
             user_feedback: updatedSession.userFeedback,
             updated_at: new Date().toISOString(),
@@ -295,36 +299,41 @@ export const interventionService = {
     }
 
     // Close the product loop: Feed intervention outcome as a WellnessSignal back into State Engine
-    try {
-      const outcomeSignal: WellnessSignal = {
-        id: randomUUID(),
-        userId,
-        timestamp: completedAt,
-        modality: 'intervention_outcome',
-        sourceId: sessionId,
-        estimates: {
-          mood: { value: postStateSnapshot.mood, confidence: 0.85 },
-          stress: { value: postStateSnapshot.stress, confidence: 0.85 },
-          fatigue: { value: postStateSnapshot.fatigue, confidence: 0.85 },
-          energy: { value: postStateSnapshot.energy, confidence: 0.85 },
-          focus: { value: postStateSnapshot.focus, confidence: 0.85 },
-          cognitiveLoad: { value: postStateSnapshot.cognitiveLoad, confidence: 0.85 },
-        },
-        features: {
-          triggers: [session.interventionId],
-          sentimentSummary: `Completed ${session.interventionId} intervention${
-            payload.biofeedbackSummary?.biofeedbackAssisted ? ' with somatic pacing' : ''
-          }`,
-          biofeedbackAssisted: payload.biofeedbackSummary?.biofeedbackAssisted ?? false,
-          somaticStillnessScore: payload.biofeedbackSummary?.somaticStillnessScore,
-        } as any,
-        reliabilityWeight: 0.90, // High reliability: post-session reflective report
-        expiresAt: new Date(Date.now() + 12 * 3600 * 1000).toISOString(),
-      };
+    // If post-state was measured OR biofeedback was used
+    if ((postStateSnapshot && Object.keys(postStateSnapshot).length > 0) || payload.biofeedbackSummary) {
+      try {
+        const estimates: Partial<Record<StateDimensionKey, DimensionEstimate>> = {};
+        if (postStateSnapshot) {
+          for (const [dimKey, dimVal] of Object.entries(postStateSnapshot)) {
+            if (typeof dimVal === 'number') {
+              estimates[dimKey as StateDimensionKey] = { value: dimVal, confidence: 0.85 };
+            }
+          }
+        }
 
-      await stateService.ingestSignal(outcomeSignal);
-    } catch {
-      // Non-blocking signal ingestion
+        const outcomeSignal: WellnessSignal = {
+          id: randomUUID(),
+          userId,
+          timestamp: completedAt,
+          modality: 'intervention_outcome',
+          sourceId: sessionId,
+          estimates,
+          features: {
+            triggers: [session.interventionId],
+            sentimentSummary: `Completed ${session.interventionId} intervention${
+              payload.biofeedbackSummary?.biofeedbackAssisted ? ' with somatic pacing' : ''
+            }`,
+            biofeedbackAssisted: payload.biofeedbackSummary?.biofeedbackAssisted ?? false,
+            somaticStillnessScore: payload.biofeedbackSummary?.somaticStillnessScore,
+          } as any,
+          reliabilityWeight: 0.90, // High reliability: post-session reflective report
+          expiresAt: new Date(Date.now() + 12 * 3600 * 1000).toISOString(),
+        };
+
+        await stateService.ingestSignal(outcomeSignal);
+      } catch {
+        // Non-blocking signal ingestion
+      }
     }
 
     return updatedSession;

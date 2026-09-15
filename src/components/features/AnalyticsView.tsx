@@ -6,8 +6,7 @@
  * 1. How am I doing? (Living 3D state centerpiece with "YOU" orb + Mood/Energy/Focus trio)
  * 2. What is happening? (One concise evidence-based factual statement with micro-waveform)
  * 3. What may be influencing you? (Floating context & somatic sensation chips)
- * 4. Your next step (Actionable reflection CTA)
- * 5. Explore your inner data → (Progressive disclosure for timeline, patterns, and signals)
+ * 4. Explore your inner data → (Progressive disclosure for timeline, patterns, and signals)
  */
 
 import React, { useState, useMemo, useRef } from 'react';
@@ -28,10 +27,9 @@ import { ObservatoryLivingSummary } from './observatory/ObservatoryLivingSummary
 import { ObservatoryDeepDive } from './observatory/ObservatoryDeepDive';
 import { ObservatoryColdState } from './observatory/ObservatoryColdState';
 import { MoodCheckInModal } from './MoodCheckInModal';
-import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { Calendar, RotateCw, ArrowRight, Sparkles, Plus, Activity } from 'lucide-react';
+import { Calendar, RotateCw, Activity, Plus } from 'lucide-react';
 import { useForecast } from '../../hooks/useForecast';
 import { ForecastTrajectoryCard, WeeklyDigestCard } from './forecast';
 
@@ -41,7 +39,6 @@ export const AnalyticsView: React.FC = () => {
     personalState: appState,
     patterns: appPatterns,
     isPatternsLoading: appPatternsLoading,
-    setCurrentView,
   } = useApp();
 
   const {
@@ -93,6 +90,7 @@ export const AnalyticsView: React.FC = () => {
     return deriveWhatsHappeningInsight(personalState, recordedSlotsCount, rhythmData);
   }, [personalState, recordedSlotsCount, rhythmData]);
 
+  // Zero check-in cold state check
   const isCompletelyCold = (!moodLogs || moodLogs.length === 0) && constellation.center.isCold;
 
   const handleExploreDetails = () => {
@@ -109,17 +107,14 @@ export const AnalyticsView: React.FC = () => {
         onClose={() => setIsCheckInModalOpen(false)}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 pt-24 pb-36 space-y-10">
-        {/* ── 1. HEADER: How are you doing? ── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold tracking-[0.16em] text-[rgba(108,114,232,0.90)]">
-                Insights
-              </span>
-              <Badge variant="primary" size="sm">How Are You Doing?</Badge>
-            </div>
-            <h1 className="font-display-lg text-4xl sm:text-5xl text-[rgba(232,234,246,0.95)] tracking-tight">
+      <div className="space-y-8 max-w-7xl mx-auto pb-16">
+        {/* ── 1. OBSERVATORY HEADER ── */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#6c72e8]">
+              Personal State Engine
+            </span>
+            <h1 className="font-display-lg text-3xl sm:text-4xl text-[rgba(232,234,246,0.95)] tracking-tight">
               Your Inner Observatory
             </h1>
             <p className="font-body-md text-sm sm:text-base text-[rgba(192,196,234,0.65)] max-w-xl">
@@ -128,21 +123,20 @@ export const AnalyticsView: React.FC = () => {
             </p>
           </div>
 
-          {/* Timeframe & Action Controls */}
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-[rgba(232,234,246,0.75)] font-mono">
-              <Calendar className="w-3.5 h-3.5 text-[rgba(108,114,232,0.85)]" />
-              <span>7 Days Active</span>
-            </div>
-
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => void refreshPatterns()}
+              onClick={() => refreshPatterns()}
               disabled={isPatternsLoading}
-              aria-label="Refresh pattern analysis"
-              className="p-2 rounded-xl bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.08)] text-[rgba(232,234,246,0.70)] hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+              className="p-2.5 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.06)] text-[rgba(232,234,246,0.70)] hover:text-white transition-all disabled:opacity-50"
+              title="Refresh intelligence models"
+              aria-label="Refresh intelligence models"
             >
-              <RotateCw className={`w-3.5 h-3.5 ${isPatternsLoading ? 'animate-spin text-[#c0c4ea]' : ''}`} />
+              <RotateCw className={`w-4 h-4 ${isPatternsLoading ? 'animate-spin' : ''}`} />
             </button>
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] text-xs text-[rgba(232,234,246,0.70)]">
+              <Calendar className="w-3.5 h-3.5 text-[#6c72e8]" />
+              <span>Last 7 Days</span>
+            </div>
           </div>
         </div>
 
@@ -151,7 +145,7 @@ export const AnalyticsView: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
           >
             <ObservatoryColdState onOpenCheckIn={() => setIsCheckInModalOpen(true)} />
           </motion.div>
@@ -161,13 +155,16 @@ export const AnalyticsView: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.6 }}
         >
           <ObservatoryHero
             constellation={constellation}
+            personalState={personalState}
+            patterns={patterns}
             selectedDimension={selectedDimension}
             onSelectDimension={setSelectedDimension}
             onOpenCheckIn={() => setIsCheckInModalOpen(true)}
+            onExplorePatterns={handleExploreDetails}
           />
         </motion.div>
 
@@ -179,9 +176,11 @@ export const AnalyticsView: React.FC = () => {
         >
           <ObservatoryLivingSummary
             summary={stateSummary}
+            constellation={constellation}
             whatsHappening={whatsHappening}
             triggers={personalState?.contextualTriggers || []}
             sensations={personalState?.somaticMarkers || []}
+            personalState={personalState}
             onOpenCheckIn={() => setIsCheckInModalOpen(true)}
             onExploreDetails={handleExploreDetails}
           />
@@ -199,39 +198,6 @@ export const AnalyticsView: React.FC = () => {
             {digest && <WeeklyDigestCard digest={digest} />}
           </motion.div>
         )}
-
-        {/* ── 4.6. NEXT STEP RECOMMENDATION ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.18 }}
-        >
-          <Card className="p-6 bg-[rgba(13,15,26,0.60)] border-[rgba(255,255,255,0.07)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase font-bold tracking-[0.14em] text-[#6ee7b7]">
-                  Your Next Step
-                </span>
-                <Badge variant="primary" size="sm">Recommended Reset</Badge>
-              </div>
-              <h3 className="font-display-lg text-xl text-[rgba(232,234,246,0.95)]">
-                Postural & Sensory Reset
-              </h3>
-              <p className="text-xs sm:text-sm text-[rgba(192,196,234,0.70)] max-w-xl leading-relaxed">
-                Release screen tension, align posture, and calm overstimulated visual pathways in your dedicated Body Check practice.
-              </p>
-            </div>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setCurrentView('body_check')}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-              className="shrink-0"
-            >
-              Open Body Check
-            </Button>
-          </Card>
-        </motion.div>
 
         {/* ── 4.7. PERSONAL STATE OBSERVATORY — Dimension Breakdown ── */}
         <motion.div
@@ -285,7 +251,7 @@ export const AnalyticsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {((personalState?.overallConfidence ?? 0) >= 0.10 && (personalState?.activeSignalsCount ?? 0) > 0) ? (
                   <div
                     className="group relative cursor-help"

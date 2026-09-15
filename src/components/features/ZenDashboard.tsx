@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { useAmbientAudio } from '../../context/AmbientAudioContext';
 import {
@@ -33,6 +33,7 @@ export const ZenDashboard: React.FC = () => {
 
   const { isPlaying, togglePlayback } = useAmbientAudio();
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const firstName = userProfile?.name?.trim()?.split(' ')[0] || 'Friend';
@@ -49,7 +50,7 @@ export const ZenDashboard: React.FC = () => {
   const rafIdRef = useRef<number | null>(null);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    if (!heroRef.current) return;
+    if (shouldReduceMotion || !heroRef.current) return;
     const rect = heroRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
@@ -60,7 +61,7 @@ export const ZenDashboard: React.FC = () => {
         heroRef.current.style.setProperty('--my', `${y.toFixed(4)}`);
       }
     });
-  }, []);
+  }, [shouldReduceMotion]);
 
   const handleMouseLeave = useCallback(() => {
     if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
@@ -992,10 +993,9 @@ export const ZenDashboard: React.FC = () => {
                   </div>
 
                   {/* ── PRIMARY CTA: CONTINUE YOUR STREAK ── */}
-                  <motion.button
+                  <Button
                     onClick={() => setCurrentView('habits')}
-                    whileHover={{ scale: 1.04, y: -2 }}
-                    whileTap={{ scale: 0.97 }}
+                    aria-label="Continue Your Streak"
                     className="relative mt-3 px-8 py-3 rounded-full overflow-hidden flex items-center gap-2.5 font-semibold text-sm group cursor-pointer z-20"
                     style={{
                       background: 'rgba(30,18,65,0.75)',
@@ -1015,7 +1015,7 @@ export const ZenDashboard: React.FC = () => {
                     <Flame className="w-4 h-4 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform" />
                     <span style={{ letterSpacing: '0.04em' }}>Continue Your Streak</span>
                     <ArrowRight className="w-4 h-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-                  </motion.button>
+                  </Button>
                 </div>
               </div>
 

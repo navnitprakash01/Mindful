@@ -6,6 +6,7 @@ import {
   UserProfile,
   AppNotification,
   ChatMessage,
+  ChatConversationSummary,
   CompanionMode,
   PersonalState,
 } from '../types';
@@ -58,8 +59,14 @@ export interface AppContextType {
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
   chatMessages: ChatMessage[];
+  conversations: ChatConversationSummary[];
+  activeConversationId: string | null;
+  isHistoryLoading: boolean;
   addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<ChatMessage | null>;
   clearChat: () => void;
+  startNewConversation: () => void;
+  selectConversation: (id: string) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
   isPricingModalOpen: boolean;
   setIsPricingModalOpen: (open: boolean) => void;
   isCommandKOpen: boolean;
